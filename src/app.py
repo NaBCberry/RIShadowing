@@ -9,6 +9,7 @@ from src.services.audio_player import AudioPlayer
 from src.services.audio_recorder import AudioRecorder
 from src.services.speech_recognizer import SpeechRecognizer
 from src.services.comparator import ShadowComparator
+from src.services.tts import create_tts_engine
 from src.gui.styles import C, FONT_FAMILY
 from src.gui.panels.device_panel import DevicePanel
 from src.gui.panels.input_panel import InputPanel
@@ -99,28 +100,15 @@ class ShadowingApp:
             print("[App] Vosk model NOT found")
 
     def _generate_tts_audio(self, text: str) -> str:
-        try:
-            import pyttsx3
-            engine = pyttsx3.init()
-            voices = engine.getProperty("voices")
-            for v in voices:
-                if hasattr(v, "languages") and v.languages:
-                    if any(l.startswith("en") for l in v.languages):
-                        engine.setProperty("voice", v.id)
-                        break
-            engine.setProperty("rate", 155)
+        engine_key = self.input_panel.get_selected_tts_engine()
+        self.control_panel.set_status(f"⏳ 正在用 {engine_key} 合成参考语音...")
+        self.root.update()
 
+        try:
+            engine = create_tts_engine(engine_key)
             tmp_path = os.path.join(tempfile.gettempdir(), "shadow_ref.wav")
-            engine.save_to_file(text, tmp_path)
-            engine.runAndWait()
+            engine.synthesize(text, tmp_path)
             return tmp_path
-        except ImportError:
-            messagebox.showwarning(
-                "缺少依赖",
-                "pyttsx3未安装。请安装后使用TTS功能:\npip install pyttsx3\n\n"
-                "你也可以直接加载WAV音频文件。",
-            )
-            return None
         except Exception as e:
             messagebox.showerror("TTS错误", f"语音合成失败:\n{e}")
             return None

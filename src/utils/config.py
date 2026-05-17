@@ -12,7 +12,7 @@ _DEFAULTS = {
         "model_path": None,
     },
     "tts": {
-        "engine": "pyttsx3",
+        "engine": "edge",
         "edge_tts_voice": "en-US-JennyNeural",
         "piper_model_path": None,
     },

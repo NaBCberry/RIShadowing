@@ -2,12 +2,14 @@ import customtkinter as ctk
 import tkinter as tk
 from tkinter import filedialog
 from src.gui.styles import C, FONT_FAMILY
+from src.services.tts import list_available_engines
 
 
 class InputPanel(ctk.CTkFrame):
     def __init__(self, parent, app):
         super().__init__(parent, fg_color=C["bg_panel"], corner_radius=8)
         self.app = app
+        self._tts_engines = []
         self._build()
 
     def _build(self):
@@ -42,7 +44,7 @@ class InputPanel(ctk.CTkFrame):
             text_color=C["fg_primary"],
             wrap="word",
         )
-        self.ref_text_widget.pack(fill=tk.X, padx=10, pady=(0, 8))
+        self.ref_text_widget.pack(fill=tk.X, padx=10, pady=(0, 4))
         self.ref_text_widget.insert(
             "1.0",
             "The quick brown fox jumps over the lazy dog. "
@@ -50,12 +52,59 @@ class InputPanel(ctk.CTkFrame):
             "Practice makes perfect every single day.",
         )
 
+        tts_row = ctk.CTkFrame(self, fg_color="transparent")
+        tts_row.pack(fill=tk.X, padx=10, pady=(0, 8))
+
+        ctk.CTkLabel(
+            tts_row, text="🗣 TTS引擎:",
+            font=(FONT_FAMILY, 10), text_color=C["fg_primary"],
+        ).pack(side=tk.LEFT)
+
+        self._tts_engines = list_available_engines()
+        tts_names = [name for _, name in self._tts_engines]
+        if not tts_names:
+            tts_names = ["无可用引擎"]
+
+        self.tts_menu = ctk.CTkOptionMenu(
+            tts_row,
+            values=tts_names,
+            font=(FONT_FAMILY, 10),
+            fg_color=C["bg_input"],
+            button_color=C["button_bg"],
+            button_hover_color=C["accent"],
+            text_color=C["fg_primary"],
+            width=160,
+            command=self._on_tts_change,
+        )
+        self.tts_menu.pack(side=tk.LEFT, padx=(6, 0))
+
+        ctk.CTkLabel(
+            tts_row, text="(未加载音频时自动生成参考语音)",
+            font=(FONT_FAMILY, 8),
+            text_color=C["fg_secondary"],
+        ).pack(side=tk.LEFT, padx=(10, 0))
+
     def get_text(self):
         return self.ref_text_widget.get("1.0", tk.END).strip()
 
     def set_text(self, text):
         self.ref_text_widget.delete("1.0", tk.END)
         self.ref_text_widget.insert("1.0", text)
+
+    def get_selected_tts_engine(self) -> str:
+        current = self.tts_menu.get()
+        for key, name in self._tts_engines:
+            if name == current:
+                return key
+        return "edge"
+
+    def _on_tts_change(self, value):
+        engine_key = "edge"
+        for key, name in self._tts_engines:
+            if name == value:
+                engine_key = key
+                break
+        print(f"[InputPanel] TTS engine changed to: {engine_key}")
 
     def _load_text_file(self):
         path = filedialog.askopenfilename(
