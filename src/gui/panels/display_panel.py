@@ -64,6 +64,8 @@ class DisplayPanel(ctk.CTkFrame):
         self.user_display.tag_config("red_word", foreground="#ff5555")
         self.user_display.tag_config("current", foreground="#f1fa8c",
                                       background="#44447a")
+        self.user_display.tag_config("low_conf", foreground="#ff5555",
+                                      underline=True)
 
         tag_frame = tk.Frame(right_frame, bg=C["bg_panel"])
         tag_frame.pack(fill=tk.X, pady=(6, 0))
@@ -97,11 +99,15 @@ class DisplayPanel(ctk.CTkFrame):
         self.user_display.delete("1.0", tk.END)
 
         breakdown = accuracy_result.get("breakdown", [])
-        for item in breakdown:
+        for i, item in enumerate(breakdown):
             word = item.get("user_word", "")
             if word:
-                color_tag = f"{item.get('color', '')}_word"
-                self.user_display.insert(tk.END, word + " ", color_tag)
+                if i < len(recognized_words) and recognized_words[i].get("conf", 1.0) < 0.7:
+                    self.user_display.insert(tk.END, word, "low_conf")
+                    self.user_display.insert(tk.END, "* ")
+                else:
+                    color_tag = f"{item.get('color', '')}_word"
+                    self.user_display.insert(tk.END, word + " ", color_tag)
 
         partial = self.app.speech_recognizer.partial_text
         if partial:
@@ -115,11 +121,17 @@ class DisplayPanel(ctk.CTkFrame):
     def update_detail(self, recognized_words, accuracy_result):
         self.detail_text.configure(state=tk.NORMAL)
         self.detail_text.delete("1.0", tk.END)
+
+        total = len(recognized_words)
+        low_conf = sum(1 for w in recognized_words if w.get("conf", 1.0) < 0.7) if total > 0 else 0
+        avg_conf = sum(w.get("conf", 0) for w in recognized_words) / max(total, 1)
+
         self.detail_text.insert(
             tk.END,
             f"进度: {self.app.audio_player.position:.1f}s / {self.app.audio_player.duration:.1f}s\n"
-            f"识别词数: {len(recognized_words)}\n"
-            f"参考位置: 第{accuracy_result.get('ref_index', 0)}个词\n",
+            f"识别词数: {total}\n"
+            f"参考位置: 第{accuracy_result.get('ref_index', 0)}个词\n"
+            f"发音置信度: {avg_conf:.0%}  |  低置信度词: {low_conf}{' 🔴' if low_conf > 0 else ''}\n",
         )
         self.detail_text.configure(state=tk.DISABLED)
 

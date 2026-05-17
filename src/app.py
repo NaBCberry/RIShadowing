@@ -308,6 +308,18 @@ class ShadowingApp:
             f"🔴{accuracy_result.get('red_count', 0)}"
         )
 
+        review_words = [w for w in recognized_words if w.get("conf", 1.0) < 0.7]
+        if review_words:
+            review_list = "  ".join(w["word"] for w in review_words[:8])
+            print(f"[App] review suggestions: {review_list}")
+            self.display_panel.detail_text.configure(state=tk.NORMAL)
+            self.display_panel.detail_text.insert(
+                tk.END,
+                f"\n📝 建议复习: {review_list}\n"
+                f"(带下划线的词为发音置信度较低，可重点练习)",
+            )
+            self.display_panel.detail_text.configure(state=tk.DISABLED)
+
         mid = self.material_panel.get_current_material_id()
         if mid:
             try:
