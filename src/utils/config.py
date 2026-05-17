@@ -30,7 +30,7 @@ _DEFAULTS = {
     },
 }
 
-_CONFIG_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+_CONFIG_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 _CONFIG_PATH = os.path.join(_CONFIG_DIR, "config.json")
 _ENV_PATH = os.path.join(_CONFIG_DIR, ".env")
 
