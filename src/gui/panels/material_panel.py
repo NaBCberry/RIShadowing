@@ -16,18 +16,55 @@ class MaterialPanel(ctk.CTkFrame):
         self.app = app
         self._materials = []
         self._current_material = None
+        self._collapsed = True
         self._build()
-        self._refresh()
 
     def _build(self):
-        toolbar = ctk.CTkFrame(self, fg_color="transparent")
-        toolbar.pack(fill=tk.X, padx=10, pady=(8, 4))
+        self._header = ctk.CTkFrame(self, fg_color="transparent")
+        self._header.pack(fill=tk.X, padx=10, pady=(8, 4))
 
-        ctk.CTkLabel(
-            toolbar, text="📚 材料库",
-            font=(FONT_FAMILY, 12, "bold"),
+        self._toggle_btn = ctk.CTkButton(
+            self._header, text="📚 材料库 ▸",
+            font=(FONT_FAMILY, 10, "bold"),
+            fg_color="transparent", hover_color=C["button_bg"],
+            text_color=C["fg_secondary"],
+            anchor="w",
+            command=self._toggle,
+        )
+        self._toggle_btn.pack(side=tk.LEFT, fill=tk.X)
+
+        self._body = ctk.CTkFrame(self, fg_color="transparent")
+
+    def _toggle(self):
+        self._collapsed = not self._collapsed
+        if self._collapsed:
+            self._body.pack_forget()
+            self._toggle_btn.configure(text="📚 材料库 ▸")
+        else:
+            self._body.pack(fill=tk.X, padx=10, pady=(0, 6),
+                            after=self._header)
+            self._refresh_body()
+            self._toggle_btn.configure(text="📚 材料库 ▾")
+
+    def _refresh_body(self):
+        for w in self._body.winfo_children():
+            w.destroy()
+
+        toolbar = ctk.CTkFrame(self._body, fg_color="transparent")
+        toolbar.pack(fill=tk.X, pady=(0, 4))
+
+        self.search_var = tk.StringVar()
+        self.search_var.trace("w", lambda *a: self._refresh_body())
+
+        ctk.CTkEntry(
+            toolbar,
+            textvariable=self.search_var,
+            placeholder_text="搜索...",
+            font=(FONT_FAMILY, 9),
+            fg_color=C["bg_input"],
             text_color=C["fg_primary"],
-        ).pack(side=tk.LEFT)
+            width=120, height=26,
+        ).pack(side=tk.LEFT, padx=(0, 6))
 
         ctk.CTkButton(
             toolbar, text="➕ 添加",
@@ -45,62 +82,39 @@ class MaterialPanel(ctk.CTkFrame):
             command=self._delete_material,
         ).pack(side=tk.RIGHT, padx=(4, 0))
 
-        self.search_var = tk.StringVar()
-        self.search_var.trace("w", lambda *a: self._refresh())
-
-        search_entry = ctk.CTkEntry(
-            toolbar,
-            textvariable=self.search_var,
-            placeholder_text="搜索标题/内容...",
-            font=(FONT_FAMILY, 9),
-            fg_color=C["bg_input"],
-            text_color=C["fg_primary"],
-            width=140, height=26,
-        )
-        search_entry.pack(side=tk.RIGHT, padx=(10, 0))
-
-        self.list_frame = ctk.CTkScrollableFrame(
-            self,
-            fg_color=C["bg_input"],
-            height=140,
-        )
-        self.list_frame.pack(fill=tk.X, padx=10, pady=(4, 6))
-
-        self._refresh()
-
-    def _refresh(self, event=None):
-        for w in self.list_frame.winfo_children():
-            w.destroy()
-
         search = self.search_var.get().strip() or None
         self._materials = list_materials(search=search)
-        topics = get_all_topics()
+
+        list_frame = ctk.CTkScrollableFrame(
+            self._body,
+            fg_color=C["bg_input"],
+            height=100,
+        )
+        list_frame.pack(fill=tk.X, pady=(0, 2))
 
         if not self._materials:
             ctk.CTkLabel(
-                self.list_frame,
-                text="暂无材料，点击「➕ 添加」导入文本或音频文件",
+                list_frame,
+                text="暂无材料，点击「➕ 添加」导入文本或音频",
                 font=(FONT_FAMILY, 9),
                 text_color=C["fg_secondary"],
             ).pack(pady=10)
             return
 
         for m in self._materials:
-            row = ctk.CTkFrame(self.list_frame, fg_color="transparent")
+            row = ctk.CTkFrame(list_frame, fg_color="transparent")
             row.pack(fill=tk.X, pady=1)
 
-            label_text = f"  {m.title[:40]}"
+            label_text = f"  {m.title[:35]}"
             if m.topic:
                 label_text += f"  [{m.topic}]"
-            if m.difficulty:
-                label_text += f"  ({m.difficulty})"
             if m.duration > 0:
-                label_text += f"  {m.duration:.1f}s"
-            label_text += f"  | 练习{m.practice_count}次"
+                label_text += f"  {m.duration:.0f}s"
+            label_text += f"  | {m.practice_count}次"
             if m.best_score > 0:
-                label_text += f"  | 最佳{m.best_score:.0%}"
+                label_text += f"  | {m.best_score:.0%}"
 
-            btn = ctk.CTkButton(
+            ctk.CTkButton(
                 row, text=label_text,
                 font=(FONT_FAMILY, 9),
                 fg_color=C["bg_panel"],
@@ -108,8 +122,11 @@ class MaterialPanel(ctk.CTkFrame):
                 text_color=C["fg_primary"],
                 anchor="w",
                 command=lambda mid=m.id: self._select_material(mid),
-            )
-            btn.pack(fill=tk.X)
+            ).pack(fill=tk.X)
+
+    def _refresh(self):
+        if not self._collapsed:
+            self._refresh_body()
 
     def _select_material(self, material_id: int):
         material = get_material(material_id)

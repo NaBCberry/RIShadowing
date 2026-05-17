@@ -217,6 +217,8 @@ class ShadowingApp:
         else:
             self.comparator.set_estimated_timings(self.audio_player.duration)
 
+        self.display_panel.init_ref_display(self.comparator.reference_words)
+
         self.speech_recognizer.stop()
         self.speech_recognizer = SpeechRecognizer(sample_rate=16000)
         ok = self.speech_recognizer.initialize()
@@ -266,7 +268,7 @@ class ShadowingApp:
 
         self.device_panel.update_level_meter()
 
-        self.display_panel.update_ref_display()
+        self.display_panel.update_ref_highlight()
 
         if self.comparator and self._is_running:
             recognized_words = self.speech_recognizer.get_latest_words()

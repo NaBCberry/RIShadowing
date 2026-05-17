@@ -7,6 +7,8 @@ class DisplayPanel(ctk.CTkFrame):
     def __init__(self, parent, app):
         super().__init__(parent, fg_color=C["bg_panel"], corner_radius=8)
         self.app = app
+        self._ref_word_positions = []
+        self._current_ref_idx = -1
         self._build()
 
     def _build(self):
@@ -22,7 +24,7 @@ class DisplayPanel(ctk.CTkFrame):
         self.ref_display = ctk.CTkTextbox(
             left_frame, font=("Consolas", 12),
             fg_color=C["bg_input"], text_color=C["fg_secondary"],
-            wrap="word", state="disabled",
+            wrap="word", state="normal",
         )
         self.ref_display.pack(fill=tk.BOTH, expand=True, pady=(4, 0))
         self.ref_display.tag_config("past", foreground="#6272a4")
@@ -56,7 +58,7 @@ class DisplayPanel(ctk.CTkFrame):
         self.user_display = ctk.CTkTextbox(
             right_frame, font=("Consolas", 12),
             fg_color=C["bg_input"], text_color=C["accent"],
-            wrap="word", state="disabled",
+            wrap="word", state="normal",
         )
         self.user_display.pack(fill=tk.BOTH, expand=True, pady=(4, 0))
         self.user_display.tag_config("green_word", foreground="#50fa7b")
@@ -73,40 +75,45 @@ class DisplayPanel(ctk.CTkFrame):
         self.detail_text = ctk.CTkTextbox(
             tag_frame, font=("Consolas", 10),
             fg_color=C["bg_input"], text_color=C["fg_secondary"],
-            wrap="word", state="disabled", height=70,
+            wrap="word", state="normal", height=70,
         )
         self.detail_text.pack(fill=tk.BOTH)
 
-    def _set_state(self, widget, enabled: bool):
-        widget.configure(state="normal" if enabled else "disabled")
+    def init_ref_display(self, reference_words: list):
+        self.ref_display.delete("1.0", tk.END)
+        self._ref_word_positions = []
+        self._current_ref_idx = -1
 
-    def update_ref_display(self):
+        for word in reference_words:
+            start = len(self.ref_display.get("1.0", tk.END)) - 1
+            self.ref_display.insert(tk.END, word + " ", "future")
+            end = len(self.ref_display.get("1.0", tk.END)) - 1
+            self._ref_word_positions.append((start, end))
+
+    def update_ref_highlight(self):
         if not self.app.comparator or not self.app._is_running:
             return
 
         ref_elapsed = self.app.audio_player.position
-        words_with_status = self.app.comparator.get_reference_words_for_display(ref_elapsed)
-
-        self._set_state(self.ref_display, True)
-        self.ref_display.delete("1.0", tk.END)
-
-        current_char = 0
         current_idx = self.app.comparator.get_current_ref_word_index(ref_elapsed)
 
-        for i, (word, status, idx) in enumerate(words_with_status):
-            tag = status
-            self.ref_display.insert(tk.END, word + " ", tag)
-            if i == current_idx:
-                current_char = len(self.ref_display.get("1.0", tk.END)) - len(word) - 1
+        if current_idx == self._current_ref_idx or current_idx >= len(self._ref_word_positions):
+            return
 
-        self._set_state(self.ref_display, False)
+        for i, (start, end) in enumerate(self._ref_word_positions):
+            tag = "past" if i < current_idx else ("current" if i == current_idx else "future")
+            self.ref_display.tag_remove("past", f"1.0+{start}c", f"1.0+{end}c")
+            self.ref_display.tag_remove("current", f"1.0+{start}c", f"1.0+{end}c")
+            self.ref_display.tag_remove("future", f"1.0+{start}c", f"1.0+{end}c")
+            self.ref_display.tag_add(tag, f"1.0+{start}c", f"1.0+{end}c")
 
-        if current_char > 0:
-            pos = f"1.0+{current_char}c"
-            self.ref_display.see(pos)
+        self._current_ref_idx = current_idx
+
+        if current_idx < len(self._ref_word_positions):
+            start, _ = self._ref_word_positions[current_idx]
+            self.ref_display.see(f"1.0+{start}c")
 
     def update_user_display(self, recognized_words, accuracy_result):
-        self._set_state(self.user_display, True)
         self.user_display.delete("1.0", tk.END)
 
         breakdown = accuracy_result.get("breakdown", [])
@@ -126,11 +133,9 @@ class DisplayPanel(ctk.CTkFrame):
                 self.user_display.insert(tk.END, "| ")
             self.user_display.insert(tk.END, partial, "current")
 
-        self._set_state(self.user_display, False)
         self.user_display.see(tk.END)
 
     def update_detail(self, recognized_words, accuracy_result):
-        self._set_state(self.detail_text, True)
         self.detail_text.delete("1.0", tk.END)
 
         total = len(recognized_words)
@@ -144,7 +149,6 @@ class DisplayPanel(ctk.CTkFrame):
             f"参考位置: 第{accuracy_result.get('ref_index', 0)}个词\n"
             f"发音置信度: {avg_conf:.0%}  |  低置信度词: {low_conf}{' 🔴' if low_conf > 0 else ''}\n",
         )
-        self._set_state(self.detail_text, False)
 
     def update_word_accuracy_bars(self, result: dict):
         self.word_accuracy_canvas.delete("all")
