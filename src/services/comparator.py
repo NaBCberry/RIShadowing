@@ -29,6 +29,27 @@ class ShadowComparator:
                 "ref_index": i,
             })
 
+    def set_word_timings(self, asr_words: list):
+        if not asr_words or not self._ref_words:
+            return
+        self._word_timings = []
+        for i, (ref_word, asr_w) in enumerate(zip(self._ref_words, asr_words)):
+            self._word_timings.append({
+                "word": ref_word,
+                "start": asr_w.get("start", 0.0),
+                "end": asr_w.get("end", 0.0),
+                "ref_index": i,
+            })
+        if len(asr_words) > len(self._ref_words):
+            for i in range(len(self._ref_words), len(asr_words)):
+                self._word_timings.append({
+                    "word": asr_words[i].get("word", ""),
+                    "start": asr_words[i].get("start", 0.0),
+                    "end": asr_words[i].get("end", 0.0),
+                    "ref_index": i,
+                })
+        print(f"[Comparator] using {len(self._word_timings)} real word timestamps")
+
     @property
     def reference_words(self) -> List[str]:
         return list(self._ref_words)

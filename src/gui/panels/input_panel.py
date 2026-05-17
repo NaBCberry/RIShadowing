@@ -84,6 +84,14 @@ class InputPanel(ctk.CTkFrame):
             text_color=C["fg_secondary"],
         ).pack(side=tk.LEFT, padx=(10, 0))
 
+        ctk.CTkButton(
+            tts_row, text="🎯 精准转写",
+            font=(FONT_FAMILY, 9, "bold"),
+            fg_color=C["button_bg"], hover_color=C["accent2"],
+            text_color=C["button_fg"], width=90, height=26,
+            command=self.app._transcribe_with_whisper,
+        ).pack(side=tk.RIGHT, padx=(0, 0))
+
     def get_text(self):
         return self.ref_text_widget.get("1.0", tk.END).strip()
 
@@ -132,5 +140,6 @@ class InputPanel(ctk.CTkFrame):
                 self.app.control_panel.set_status(
                     f"✅ 已加载参考音频 — 时长: {dur:.1f}秒"
                 )
+                self.app._on_audio_loaded(path)
             except Exception as e:
                 tk.messagebox.showerror("加载失败", f"无法加载音频文件:\n{e}")

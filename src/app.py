@@ -10,6 +10,7 @@ from src.services.audio_recorder import AudioRecorder
 from src.services.speech_recognizer import SpeechRecognizer
 from src.services.comparator import ShadowComparator
 from src.services.tts import create_tts_engine
+from src.services.asr import create_asr_engine
 from src.gui.styles import C, FONT_FAMILY
 from src.gui.panels.device_panel import DevicePanel
 from src.gui.panels.input_panel import InputPanel
@@ -40,6 +41,7 @@ class ShadowingApp:
         self._ref_audio_path = None
         self._selected_input_device = None
         self._selected_output_device = None
+        self._asr_words = []
 
         self._build_ui()
         self._check_speech_model()
@@ -99,6 +101,62 @@ class ShadowingApp:
             )
             print("[App] Vosk model NOT found")
 
+    def _on_audio_loaded(self, audio_path: str):
+        self._asr_words = []
+        self._transcribe_with_vosk(audio_path)
+
+    def _transcribe_with_vosk(self, audio_path: str):
+        try:
+            self.control_panel.set_status("⏳ Vosk 离线转写中...")
+            self.root.update()
+            engine = create_asr_engine("vosk")
+            result = engine.transcribe(audio_path)
+            text = result.get("text", "")
+            words = result.get("words", [])
+            if text:
+                self.input_panel.set_text(text)
+                self._asr_words = words
+                self.control_panel.set_status(
+                    f"✅ Vosk 离线转写完成 — {len(words)} 词"
+                )
+                print(f"[App] Vosk transcription: {len(words)} words")
+            else:
+                self.control_panel.set_status(
+                    "⚠ Vosk 未识别到语音，请手动输入参考文本"
+                )
+        except Exception as e:
+            print(f"[App] Vosk transcription error: {e}")
+            self.control_panel.set_status("⚠ 离线转写失败，请手动输入参考文本")
+
+    def _transcribe_with_whisper(self):
+        if not self._ref_audio_path:
+            return
+        try:
+            self.control_panel.set_status("⏳ Whisper API 精准转写中...")
+            self.root.update()
+            from src.utils.config import get_env
+            env = get_env()
+            api_key = env.get("WHISPER_API_KEY")
+            if not api_key:
+                messagebox.showwarning(
+                    "缺少配置",
+                    "请在 .env 文件中填入 WHISPER_API_KEY\n获取方式见 README.md"
+                )
+                return
+            engine = create_asr_engine("whisper", api_key=api_key)
+            result = engine.transcribe(self._ref_audio_path)
+            text = result.get("text", "")
+            words = result.get("words", [])
+            if text:
+                self.input_panel.set_text(text)
+                self._asr_words = words
+                self.control_panel.set_status(
+                    f"✅ Whisper 精准转写完成 — {len(words)} 词 (含词级时间戳)"
+                )
+                print(f"[App] Whisper transcription: {len(words)} words with timestamps")
+        except Exception as e:
+            messagebox.showerror("Whisper 转写失败", str(e))
+
     def _generate_tts_audio(self, text: str) -> str:
         engine_key = self.input_panel.get_selected_tts_engine()
         self.control_panel.set_status(f"⏳ 正在用 {engine_key} 合成参考语音...")
@@ -146,7 +204,10 @@ class ShadowingApp:
         print(f"[App] output device set to: {self._selected_output_device}")
 
         self.comparator = ShadowComparator(ref_text)
-        self.comparator.set_estimated_timings(self.audio_player.duration)
+        if self._asr_words:
+            self.comparator.set_word_timings(self._asr_words)
+        else:
+            self.comparator.set_estimated_timings(self.audio_player.duration)
 
         self.speech_recognizer.stop()
         self.speech_recognizer = SpeechRecognizer(sample_rate=16000)
