@@ -55,11 +55,13 @@ class ControlPanel(ctk.CTkFrame):
             self.btn_start.configure(
                 text="🎙 生成语音",
                 fg_color=C["green"],
+                state=tk.NORMAL,
             )
         elif mode == "shadowing":
             self.btn_start.configure(
                 text="▶  开始跟读 (Start Shadowing)",
                 fg_color=C["accent"],
+                state=tk.NORMAL,
             )
         elif mode == "loading":
             self.btn_start.configure(state=tk.DISABLED)
