@@ -1,6 +1,7 @@
-from app import main
-from utils.config import init_config
+from src.app import ShadowingApp
+from src.utils.config import init_config
 
 if __name__ == "__main__":
     init_config()
-    main()
+    app = ShadowingApp()
+    app.run()
