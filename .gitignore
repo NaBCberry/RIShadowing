@@ -19,6 +19,7 @@ config.json
 
 temp/
 *.log
+*.db
 
 dist/
 build/

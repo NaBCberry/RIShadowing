@@ -17,6 +17,8 @@ from src.gui.panels.input_panel import InputPanel
 from src.gui.panels.control_panel import ControlPanel
 from src.gui.panels.feedback_panel import FeedbackPanel
 from src.gui.panels.display_panel import DisplayPanel
+from src.gui.panels.material_panel import MaterialPanel
+from src.models.material import init_db, record_practice
 
 ctk.set_appearance_mode("dark")
 ctk.set_default_color_theme("blue")
@@ -42,6 +44,9 @@ class ShadowingApp:
         self._selected_input_device = None
         self._selected_output_device = None
         self._asr_words = []
+        self._current_material_id = None
+
+        init_db()
 
         self._build_ui()
         self._check_speech_model()
@@ -77,6 +82,9 @@ class ShadowingApp:
 
         self.input_panel = InputPanel(main, self)
         self.input_panel.pack(fill=tk.X, pady=(0, 6))
+
+        self.material_panel = MaterialPanel(main, self)
+        self.material_panel.pack(fill=tk.X, pady=(0, 6))
 
         self.control_panel = ControlPanel(main, self)
         self.control_panel.pack(fill=tk.X, pady=(0, 6))
@@ -299,6 +307,21 @@ class ShadowingApp:
             f"🟡{accuracy_result.get('yellow_count', 0)} "
             f"🔴{accuracy_result.get('red_count', 0)}"
         )
+
+        mid = self.material_panel.get_current_material_id()
+        if mid:
+            try:
+                record_practice(
+                    mid, score,
+                    accuracy_result.get("green_count", 0),
+                    accuracy_result.get("yellow_count", 0),
+                    accuracy_result.get("red_count", 0),
+                    self.audio_player.duration,
+                )
+                self.material_panel._refresh()
+                print(f"[App] recorded practice for material id={mid}")
+            except Exception as e:
+                print(f"[App] record practice error: {e}")
 
     def _on_close(self):
         self._is_running = False
