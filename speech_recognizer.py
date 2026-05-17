@@ -69,6 +69,8 @@ class SpeechRecognizer:
 
     def process_audio(self, audio_queue: queue.Queue):
         self._is_running = True
+        chunk_count = 0
+        accept_count = 0
         while self._is_running:
             try:
                 data = audio_queue.get(timeout=0.1)
@@ -78,10 +80,14 @@ class SpeechRecognizer:
             if data is None:
                 break
 
+            chunk_count += 1
+
             if self._recognizer.AcceptWaveform(data):
+                accept_count += 1
                 result = json.loads(self._recognizer.Result())
                 text = result.get("text", "").strip()
                 if text:
+                    print(f"[STT] final: '{text}'")
                     with self._lock:
                         self._results.append({
                             "text": text,
@@ -90,13 +96,17 @@ class SpeechRecognizer:
             else:
                 partial = json.loads(self._recognizer.PartialResult())
                 text = partial.get("partial", "").strip()
+                if text:
+                    print(f"[STT] partial: '{text}'")
                 with self._lock:
                     self._partial_text = text
 
+        print(f"[STT] process_audio ended. chunks={chunk_count}, accepted={accept_count}")
         if self._recognizer:
             final = json.loads(self._recognizer.FinalResult())
             text = final.get("text", "").strip()
             if text:
+                print(f"[STT] drain final: '{text}'")
                 with self._lock:
                     self._results.append({
                         "text": text,

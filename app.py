@@ -2,6 +2,7 @@ import tkinter as tk
 from tkinter import ttk, scrolledtext, messagebox, filedialog
 import time
 import os
+import math
 import tempfile
 
 from audio_player import AudioPlayer
@@ -28,6 +29,14 @@ class ShadowingApp:
         self._practice_start_time = 0.0
         self._ref_audio_path = None
 
+        self._input_devices = []
+        self._output_devices = []
+        self._selected_input_device = None
+        self._selected_output_device = None
+        self._input_device_var = tk.StringVar(value="默认设备")
+        self._output_device_var = tk.StringVar(value="默认设备")
+        self._device_menu_open = False
+
         self.COLORS = {
             "bg_dark": "#1e1e2e",
             "bg_panel": "#2a2a3e",
@@ -48,6 +57,10 @@ class ShadowingApp:
         self._setup_styles()
         self._build_ui()
         self._check_speech_model()
+
+        print("=" * 50)
+        print(" 影子跟读训练 Shadowing Practice v1.1")
+        print("=" * 50)
 
         self.root.protocol("WM_DELETE_WINDOW", self._on_close)
 
@@ -101,6 +114,7 @@ class ShadowingApp:
         main_container.pack(fill=tk.BOTH, expand=True, padx=12, pady=8)
 
         self._build_header(main_container)
+        self._build_device_section(main_container)
         self._build_input_section(main_container)
         self._build_control_section(main_container)
         self._build_feedback_section(main_container)
@@ -120,7 +134,126 @@ class ShadowingApp:
             style="Subtitle.TLabel",
         ).pack(side=tk.LEFT, padx=(16, 0))
 
-    def _build_input_section(self, parent):
+    def _build_device_section(self, parent):
+        panel = ttk.Frame(parent, style="Panel.TFrame")
+        panel.pack(fill=tk.X, pady=(0, 6))
+
+        row = ttk.Frame(panel, style="Panel.TFrame")
+        row.pack(fill=tk.X, padx=10, pady=(6, 4))
+
+        ttk.Label(
+            row, text="🎤 麦克风 (Input):", style="Panel.TLabel"
+        ).pack(side=tk.LEFT)
+
+        self.input_device_menu = ttk.Combobox(
+            row,
+            textvariable=self._input_device_var,
+            values=["默认设备"],
+            state="readonly",
+            width=36,
+        )
+        self.input_device_menu.pack(side=tk.LEFT, padx=(6, 20))
+        self.input_device_menu.bind("<<ComboboxSelected>>", self._on_input_device_change)
+
+        ttk.Label(
+            row, text="🔊 扬声器 (Output):", style="Panel.TLabel"
+        ).pack(side=tk.LEFT)
+
+        self.output_device_menu = ttk.Combobox(
+            row,
+            textvariable=self._output_device_var,
+            values=["默认设备"],
+            state="readonly",
+            width=36,
+        )
+        self.output_device_menu.pack(side=tk.LEFT, padx=(6, 0))
+        self.output_device_menu.bind("<<ComboboxSelected>>", self._on_output_device_change)
+
+        level_row = ttk.Frame(panel, style="Panel.TFrame")
+        level_row.pack(fill=tk.X, padx=10, pady=(2, 6))
+
+        ttk.Label(
+            level_row, text="📶 录音电平:", style="Panel.TLabel"
+        ).pack(side=tk.LEFT)
+
+        self.level_canvas = tk.Canvas(
+            level_row,
+            height=18,
+            bg=self.COLORS["bg_input"],
+            highlightthickness=0,
+        )
+        self.level_canvas.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(6, 0))
+        self._level_bar = self.level_canvas.create_rectangle(
+            0, 0, 0, 18, fill=self.COLORS["green"], outline=""
+        )
+        self._level_peak = self.level_canvas.create_rectangle(
+            0, 0, 0, 18, fill=self.COLORS["red"], outline=""
+        )
+
+        self._scan_devices()
+
+    def _scan_devices(self):
+        try:
+            self._input_devices = AudioRecorder.list_devices()
+            self._output_devices = AudioPlayer.list_devices()
+
+            input_names = ["默认设备"] + [
+                f"{d['name'][:50]} (ch:{d['channels']})" for d in self._input_devices
+            ]
+            output_names = ["默认设备"] + [
+                f"{d['name'][:50]} (ch:{d['channels']})" for d in self._output_devices
+            ]
+
+            self.input_device_menu["values"] = input_names
+            self.output_device_menu["values"] = output_names
+
+            print(f"[Devices] Found {len(self._input_devices)} input, {len(self._output_devices)} output devices")
+        except Exception as e:
+            print(f"[Devices] scan error: {e}")
+
+    def _on_input_device_change(self, event=None):
+        idx = self.input_device_menu.current()
+        if idx <= 0:
+            self._selected_input_device = None
+            print("[Devices] input: default")
+        else:
+            self._selected_input_device = self._input_devices[idx - 1]["index"]
+            name = self._input_devices[idx - 1]["name"]
+            print(f"[Devices] input: {name} (index={self._selected_input_device})")
+
+    def _on_output_device_change(self, event=None):
+        idx = self.output_device_menu.current()
+        if idx <= 0:
+            self._selected_output_device = None
+            print("[Devices] output: default")
+        else:
+            self._selected_output_device = self._output_devices[idx - 1]["index"]
+            name = self._output_devices[idx - 1]["name"]
+            print(f"[Devices] output: {name} (index={self._selected_output_device})")
+
+    def _update_level_meter(self):
+        if not self._is_running:
+            self.level_canvas.coords(self._level_bar, 0, 0, 0, 18)
+            self.level_canvas.coords(self._level_peak, 0, 0, 0, 18)
+            return
+
+        level = self.audio_recorder.current_level
+        w = self.level_canvas.winfo_width()
+        if w < 10:
+            w = 200
+
+        bar_w = int(level * w * 2)
+        bar_w = min(bar_w, w)
+
+        if level > 0.85:
+            color = self.COLORS["red"]
+        elif level > 0.5:
+            color = self.COLORS["yellow"]
+        else:
+            color = self.COLORS["green"]
+
+        self.level_canvas.itemconfig(self._level_bar, fill=color)
+        self.level_canvas.coords(self._level_bar, 0, 0, bar_w, 18)
         panel = ttk.Frame(parent, style="Panel.TFrame")
         panel.pack(fill=tk.X, pady=(0, 6))
 
@@ -374,11 +507,13 @@ class ShadowingApp:
             self.status_label.config(
                 text=f"✅ 语音模型已就绪 — {model_name}"
             )
+            print(f"[App] Vosk model ready: {model_path}")
         else:
             self.status_label.config(
                 text="⚠ 未找到Vosk语音模型 — 请下载模型并解压到项目根目录\n"
                      "下载地址: https://alphacephei.com/vosk/models"
             )
+            print("[App] Vosk model NOT found")
 
     def _load_text_file(self):
         path = filedialog.askopenfilename(
@@ -568,6 +703,7 @@ class ShadowingApp:
             self._on_practice_finished()
             return
 
+        self._update_level_meter()
         self._update_ref_display()
         self._update_feedback()
         self.root.after(200, self._update_loop)
@@ -601,24 +737,36 @@ class ShadowingApp:
             messagebox.showerror("音频加载失败", str(e))
             return
 
+        self.audio_player._device = self._selected_output_device
+        print(f"[App] output device set to: {self._selected_output_device}")
+
         self.comparator = ShadowComparator(ref_text)
         self.comparator.set_estimated_timings(self.audio_player.duration)
 
         self.speech_recognizer.stop()
         self.speech_recognizer = SpeechRecognizer(sample_rate=16000)
-        self.speech_recognizer.initialize()
+        ok = self.speech_recognizer.initialize()
+        print(f"[App] SpeechRecognizer init: {'OK' if ok else 'FAILED'}")
 
-        self.audio_recorder = AudioRecorder(sample_rate=16000, block_size=4000)
+        self.audio_recorder = AudioRecorder(
+            sample_rate=16000, block_size=4000,
+            device=self._selected_input_device,
+        )
         self.audio_recorder.start()
+        print(f"[App] AudioRecorder started, device={self._selected_input_device}")
+
         self._stt_thread = self.speech_recognizer.start(
             self.audio_recorder.audio_queue
         )
+        print(f"[App] STT thread started: {self._stt_thread is not None}")
 
         self._is_running = True
         self._practice_start_time = time.time()
 
         self.btn_start.config(state=tk.DISABLED)
         self.btn_stop.config(state=tk.NORMAL)
+        self.input_device_menu.config(state=tk.DISABLED)
+        self.output_device_menu.config(state=tk.DISABLED)
 
         def on_audio_finished():
             self.root.after(0, self._on_practice_finished)
@@ -635,6 +783,7 @@ class ShadowingApp:
         self.speech_recognizer.stop()
         self._update_button_states(False)
         self.status_label.config(text="⏹ 已停止")
+        print("[App] shadowing stopped by user")
 
     def _on_practice_finished(self):
         if not self._is_running:
@@ -651,6 +800,10 @@ class ShadowingApp:
         )
         score = accuracy_result.get("score", 0.0)
 
+        print(f"[App] practice finished. recognized words: {len(recognized_words)}, accuracy: {score:.0%}")
+        for w in recognized_words[:5]:
+            print(f"  [{w['word']}] conf={w['conf']:.2f}")
+
         self.status_label.config(
             text=f"✅ 训练完成! 整体准确度: {score:.0%} | "
                  f"🟢{accuracy_result.get('green_count', 0)} "
@@ -659,12 +812,16 @@ class ShadowingApp:
         )
 
     def _update_button_states(self, is_running: bool):
+        state = tk.DISABLED if is_running else tk.NORMAL
+        readstate = "readonly" if not is_running else tk.DISABLED
         if is_running:
             self.btn_start.config(state=tk.DISABLED)
             self.btn_stop.config(state=tk.NORMAL)
         else:
             self.btn_start.config(state=tk.NORMAL)
             self.btn_stop.config(state=tk.DISABLED)
+        self.input_device_menu.config(state=readstate)
+        self.output_device_menu.config(state=readstate)
 
     def _on_close(self):
         self._is_running = False
