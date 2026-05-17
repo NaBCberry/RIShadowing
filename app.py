@@ -254,6 +254,8 @@ class ShadowingApp:
 
         self.level_canvas.itemconfig(self._level_bar, fill=color)
         self.level_canvas.coords(self._level_bar, 0, 0, bar_w, 18)
+
+    def _build_input_section(self, parent):
         panel = ttk.Frame(parent, style="Panel.TFrame")
         panel.pack(fill=tk.X, pady=(0, 6))
 
