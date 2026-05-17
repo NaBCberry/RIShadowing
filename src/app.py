@@ -109,6 +109,12 @@ class ShadowingApp:
             )
             print("[App] Vosk model NOT found")
 
+    def _on_text_changed(self):
+        self._ref_audio_path = None
+        self._asr_words = []
+        self.control_panel.set_mode("generate")
+        self.control_panel.set_status("📝 文本已修改 — 点击「生成语音」")
+
     def _on_audio_loaded(self, audio_path: str):
         self._asr_words = []
         self._transcribe_with_vosk(audio_path)
@@ -179,7 +185,7 @@ class ShadowingApp:
             messagebox.showerror("TTS错误", f"语音合成失败:\n{e}")
             return None
 
-    def _start_shadowing(self):
+    def _generate_and_prepare(self):
         ref_text = self.input_panel.get_text()
         if not ref_text:
             messagebox.showwarning("缺少输入", "请输入参考文本")
@@ -194,13 +200,50 @@ class ShadowingApp:
             )
             return
 
+        self.control_panel.set_mode("loading")
+        self._ref_audio_path = None
+        self._asr_words = []
+
+        audio_path = self._generate_tts_audio(ref_text)
+        if not audio_path:
+            self.control_panel.set_mode("generate")
+            return
+
+        self._ref_audio_path = audio_path
+
+        try:
+            self.audio_player.load_file(audio_path)
+        except Exception as e:
+            messagebox.showerror("音频加载失败", str(e))
+            self.control_panel.set_mode("generate")
+            return
+
+        self.control_panel.set_status("⏳ 正在分析语音时间轴...")
+        self.root.update()
+        try:
+            engine = create_asr_engine("vosk")
+            result = engine.transcribe(audio_path)
+            self._asr_words = result.get("words", [])
+            if self._asr_words:
+                print(f"[App] TTS audio analyzed: {len(self._asr_words)} word timestamps")
+        except Exception as e:
+            print(f"[App] TTS timestamp analysis failed, using estimates: {e}")
+
+        self.control_panel.set_mode("shadowing")
+        self.control_panel.set_status(
+            f"✅ 语音已就绪 — 时长: {self.audio_player.duration:.1f}秒 | 点击「开始跟读」"
+        )
+
+    def _start_shadowing(self):
+        ref_text = self.input_panel.get_text()
+        if not ref_text:
+            messagebox.showwarning("缺少输入", "请输入参考文本")
+            return
+
         if not self._ref_audio_path:
-            self.control_panel.set_status("⏳ 正在合成参考语音...")
-            self.root.update()
-            audio_path = self._generate_tts_audio(ref_text)
-            if not audio_path:
-                return
-            self._ref_audio_path = audio_path
+            self.control_panel.set_mode("generate")
+            self.control_panel.set_status("⚠ 请先点击「生成语音」")
+            return
 
         try:
             self.audio_player.load_file(self._ref_audio_path)

@@ -10,6 +10,7 @@ class InputPanel(ctk.CTkFrame):
         super().__init__(parent, fg_color=C["bg_panel"], corner_radius=8)
         self.app = app
         self._tts_engines = []
+        self._suppress_change = False
         self._build()
 
     def _build(self):
@@ -45,6 +46,7 @@ class InputPanel(ctk.CTkFrame):
             wrap="word",
         )
         self.ref_text_widget.pack(fill=tk.X, padx=10, pady=(0, 4))
+        self.ref_text_widget._textbox.bind("<<Modified>>", self._on_text_modified)
         self.ref_text_widget.insert(
             "1.0",
             "The quick brown fox jumps over the lazy dog. "
@@ -96,8 +98,17 @@ class InputPanel(ctk.CTkFrame):
         return self.ref_text_widget.get("1.0", tk.END).strip()
 
     def set_text(self, text):
+        self._suppress_change = True
         self.ref_text_widget.delete("1.0", tk.END)
         self.ref_text_widget.insert("1.0", text)
+        self.ref_text_widget._textbox.edit_modified(False)
+        self._suppress_change = False
+
+    def _on_text_modified(self, event=None):
+        if self._suppress_change:
+            return
+        self.ref_text_widget._textbox.edit_modified(False)
+        self.app._on_text_changed()
 
     def get_selected_tts_engine(self) -> str:
         current = self.tts_menu.get()
@@ -140,6 +151,7 @@ class InputPanel(ctk.CTkFrame):
                 self.app.control_panel.set_status(
                     f"✅ 已加载参考音频 — 时长: {dur:.1f}秒"
                 )
+                self.app.control_panel.set_mode("shadowing")
                 self.app._on_audio_loaded(path)
             except Exception as e:
                 tk.messagebox.showerror("加载失败", f"无法加载音频文件:\n{e}")
