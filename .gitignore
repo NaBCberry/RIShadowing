@@ -20,6 +20,8 @@ config.json
 temp/
 *.log
 *.db
+*.db-shm
+*.db-wal
 
 dist/
 build/
