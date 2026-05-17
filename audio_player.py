@@ -6,7 +6,7 @@ import numpy as np
 
 
 class AudioPlayer:
-    def __init__(self):
+    def __init__(self, device=None):
         self._audio_data = None
         self._sample_rate = None
         self._is_playing = False
@@ -14,6 +14,7 @@ class AudioPlayer:
         self._start_time = 0.0
         self._lock = threading.Lock()
         self._stream = None
+        self._device = device
 
     def load_file(self, file_path: str):
         self._audio_data, self._sample_rate = sf.read(file_path, dtype='float32')
@@ -43,6 +44,20 @@ class AudioPlayer:
                 return self._position
             return self._position + (time.time() - self._start_time)
 
+    @staticmethod
+    def list_devices():
+        devices = sd.query_devices()
+        output_devs = []
+        for i, d in enumerate(devices):
+            if d["max_output_channels"] > 0:
+                output_devs.append({
+                    "index": i,
+                    "name": d["name"],
+                    "channels": d["max_output_channels"],
+                    "sample_rate": int(d["default_samplerate"]),
+                })
+        return output_devs
+
     def play(self, on_finished=None):
         if self._audio_data is None:
             return
@@ -53,11 +68,15 @@ class AudioPlayer:
 
         def _play_thread():
             try:
-                self._stream = sd.OutputStream(
-                    samplerate=self._sample_rate,
-                    channels=self._audio_data.shape[1],
-                    dtype='float32',
-                )
+                stream_kwargs = {
+                    "samplerate": self._sample_rate,
+                    "channels": self._audio_data.shape[1],
+                    "dtype": 'float32',
+                }
+                if self._device is not None:
+                    stream_kwargs["device"] = self._device
+
+                self._stream = sd.OutputStream(**stream_kwargs)
                 self._stream.start()
 
                 chunk_size = 1024
@@ -75,7 +94,7 @@ class AudioPlayer:
                 self._stream.close()
                 self._stream = None
             except Exception as e:
-                print(f"AudioPlayer error: {e}")
+                print(f"[AudioPlayer] error: {e}")
             finally:
                 self._is_playing = False
                 if on_finished:
@@ -83,6 +102,7 @@ class AudioPlayer:
 
         thread = threading.Thread(target=_play_thread, daemon=True)
         thread.start()
+        print(f"[AudioPlayer] playing (device={self._device})")
 
     def stop(self):
         self._is_playing = False
