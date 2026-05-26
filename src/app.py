@@ -282,7 +282,7 @@ class ShadowingApp:
         dialog = ModelDownloadDialog(
             self.root,
             extract_dir=os.path.dirname(
-                os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+                os.path.dirname(os.path.abspath(__file__))
             ),
         )
         self.wait_window(dialog)
