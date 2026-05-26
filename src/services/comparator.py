@@ -11,7 +11,7 @@ class ShadowComparator:
 
     @staticmethod
     def _tokenize(text: str) -> List[str]:
-        words = re.findall(r"[a-zA-Z']+|\S", text.lower())
+        words = re.findall(r"[a-zA-Z']+", text.lower())
         return words
 
     def set_estimated_timings(self, audio_duration: float):
