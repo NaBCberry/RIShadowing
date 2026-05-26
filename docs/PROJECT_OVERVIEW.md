@@ -61,6 +61,7 @@
 | 文件 | 职责 |
 |------|------|
 | `src/utils/config.py` | 配置管理：从硬编码默认值自动生成 `config.json` 和 `.env`；`init_config()` / `get_config()` / `deep_merge()` |
+| `src/utils/model_downloader.py` | 模型下载工具：从 alphacephei.com 下载 Vosk 模型 ZIP，解压到项目根目录，带进度回调 |
 
 #### `src/models/` — 数据层
 
@@ -104,6 +105,7 @@
 | `src/gui/panels/feedback_panel.py` | 语速/准确率实时仪表盘（Canvas 水平进度条 + 发光效果）——仅训练屏可见 |
 | `src/gui/panels/display_panel.py` | 富文本展示区：左栏参考文本逐词高亮+准确率色条，右栏用户实时识别文本+低置信度标记，底部详细统计——仅训练屏可见 |
 | `src/gui/panels/material_panel.py` | 素材库面板：可折叠、可搜索、CRUD 弹窗——仅设置屏可见 |
+| `src/gui/panels/download_dialog.py` | 模型下载弹窗：启动时未找到模型时弹出，可选小/大模型，显示下载+解压进度条 |
 
 ---
 
@@ -123,7 +125,7 @@ main.py ──► ShadowingApp (src/app.py)
               ├─ services/asr/*            # 离线/在线文字转写
               ├─ services/tts/*            # 多引擎语音合成
               │
-               └─ gui/panels/*              # 5 个 UI 面板
+               └─ gui/panels/*              # 6 个 UI 面板
 ```
 
 ### 状态机 + 双屏布局
@@ -235,6 +237,7 @@ main.py ──► ShadowingApp (src/app.py)
 - [x] 按钮模式切换（生成语音 ↔ 开始跟读）
 - [x] 文本修改自动检测
 - [x] 首次启动自动生成 `config.json` + `.env`
+- [x] Vosk 模型自动下载（启动时弹窗，可选小模型 40MB / 大模型 1.8GB，带进度条）
 
 ---
 
