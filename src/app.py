@@ -409,7 +409,17 @@ class ShadowingApp:
         self._asr_words = []
         self.input_panel.show_lamp_yellow_blinking()
 
+        import threading
+        thread = threading.Thread(
+            target=self._run_tts_and_finalize, args=(ref_text,), daemon=True
+        )
+        thread.start()
+
+    def _run_tts_and_finalize(self, ref_text: str):
         audio_path = self._generate_tts_audio(ref_text)
+        self.root.after(0, lambda: self._on_tts_complete(audio_path))
+
+    def _on_tts_complete(self, audio_path):
         if not audio_path:
             self.btn_generate.configure(
                 state=tk.NORMAL, text="GENERATE AUDIO",
