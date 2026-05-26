@@ -7,11 +7,12 @@ class ShadowComparator:
     def __init__(self, reference_text: str):
         self._ref_text = reference_text.strip()
         self._ref_words = self._tokenize(self._ref_text)
+        self._word_mask = [bool(re.match(r"[a-zA-Z']", w)) for w in self._ref_words]
         self._word_timings = []
 
     @staticmethod
     def _tokenize(text: str) -> List[str]:
-        words = re.findall(r"[a-zA-Z']+", text.lower())
+        words = re.findall(r"[a-zA-Z']+|\S", text.lower())
         return words
 
     def set_estimated_timings(self, audio_duration: float):
@@ -190,16 +191,23 @@ class ShadowComparator:
         ref_slice = self._ref_words[:current_ref_idx]
 
         user_text = " ".join(w["word"] for w in recognized_words)
-        user_words = self._tokenize(user_text) if user_text.strip() else []
+        user_words_all = self._tokenize(user_text) if user_text.strip() else []
+
+        user_words_filtered = [
+            w for w in user_words_all if re.match(r"[a-zA-Z']", w)
+        ]
+        ref_words_filtered = [
+            (i, w) for i, w in enumerate(ref_slice) if self._word_mask[i]
+        ]
 
         breakdown = []
         green_count = 0
         yellow_count = 0
         red_count = 0
 
-        for i, ref_word in enumerate(ref_slice):
-            if i < len(user_words):
-                user_word = user_words[i]
+        for j, (ref_i, ref_word) in enumerate(ref_words_filtered):
+            if j < len(user_words_filtered):
+                user_word = user_words_filtered[j]
                 ratio = difflib.SequenceMatcher(None, ref_word, user_word).ratio()
                 if ratio >= 0.8:
                     color = "green"
@@ -214,15 +222,17 @@ class ShadowComparator:
                 ratio = 0.0
                 color = "red"
                 red_count += 1
+                user_word = ""
 
             breakdown.append({
                 "ref_word": ref_word,
-                "user_word": user_words[i] if i < len(user_words) else "",
+                "user_word": user_word,
                 "ratio": ratio,
                 "color": color,
+                "ref_index": ref_i,
             })
 
-        total = len(ref_slice)
+        total = len(ref_words_filtered)
         if total == 0:
             score = 0.0
             overall_color = "gray"

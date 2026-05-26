@@ -135,7 +135,9 @@ class DisplayPanel(ctk.CTkFrame):
             end = len(self.ref_display.get("1.0", tk.END)) - 1
             self._ref_word_positions.append((start, end))
 
-        self._init_accuracy_bars(len(reference_words))
+        mask = self.app.comparator._word_mask if self.app.comparator else []
+        word_count = sum(mask) if mask else len(reference_words)
+        self._init_accuracy_bars(word_count)
 
     def _init_accuracy_bars(self, total: int):
         self.word_accuracy_canvas.delete("all")
