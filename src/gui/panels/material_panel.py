@@ -173,6 +173,7 @@ class MaterialPanel(ctk.CTkFrame):
                 self.app.btn_start_shadowing.configure(state=tk.NORMAL)
                 self.app.btn_generate.configure(state=tk.DISABLED)
                 self.app._on_audio_loaded(material.audio_path)
+                self.app.input_panel.show_lamp_green()
             except Exception as e:
                 print(f"[MaterialPanel] load audio error: {e}")
         else:
@@ -180,6 +181,7 @@ class MaterialPanel(ctk.CTkFrame):
             self.app.set_status(
                 f"SELECTED: {material.title} (NO AUDIO — WILL USE TTS)"
             )
+            self.app.input_panel.show_lamp_red()
         print(f"[MaterialPanel] selected: {material.title}")
 
     def _add_material(self):

@@ -5,12 +5,21 @@ from src.gui.styles import C, FONT_FAMILY, draw_hex_indicator
 from src.services.tts import list_available_engines
 
 
+LAMP = {
+    "red":   {"dim": "#3a1515", "bright": "#ff3333"},
+    "yellow": {"dim": "#3a3010", "bright": "#ffcc00"},
+    "green": {"dim": "#153a1a", "bright": "#33ff55"},
+}
+
+
 class InputPanel(ctk.CTkFrame):
     def __init__(self, parent, app):
         super().__init__(parent, fg_color=C["bg_panel"], corner_radius=0)
         self.app = app
         self._tts_engines = []
         self._suppress_change = False
+        self._blink_phase = False
+        self._blink_job = None
         self._build()
 
     def _build(self):
@@ -30,11 +39,26 @@ class InputPanel(ctk.CTkFrame):
         hex_cvs.pack(side=tk.LEFT)
         draw_hex_indicator(hex_cvs, 10, 10, size=6, color=C["cyan"])
 
+        lamp_frame = tk.Frame(header, bg=C["bg_panel"])
+        lamp_frame.pack(side=tk.LEFT, padx=(6, 0))
+
+        self._lamp_canvases = {}
+        self._lamp_ovals = {}
+        for key in ("red", "yellow", "green"):
+            cvs = tk.Canvas(
+                lamp_frame, width=14, height=14,
+                bg=C["bg_panel"], highlightthickness=0,
+            )
+            cvs.pack(side=tk.LEFT, padx=1)
+            oval = cvs.create_oval(2, 2, 12, 12, fill=LAMP[key]["dim"], outline="")
+            self._lamp_canvases[key] = cvs
+            self._lamp_ovals[key] = oval
+
         ctk.CTkLabel(
             header, text="REFERENCE TEXT  ·  参考文本",
             font=(FONT_FAMILY, 10, "bold"),
             text_color=C["fg_primary"],
-        ).pack(side=tk.LEFT, padx=(2, 0))
+        ).pack(side=tk.LEFT, padx=(6, 0))
 
         ctk.CTkButton(
             header, text="LOAD AUDIO",
@@ -131,6 +155,52 @@ class InputPanel(ctk.CTkFrame):
             command=self.app._transcribe_with_whisper,
         ).pack(side=tk.RIGHT, padx=(0, 0))
 
+    def _set_lamp(self, key: str, state: str):
+        cvs = self._lamp_canvases[key]
+        oval = self._lamp_ovals[key]
+        cvs.itemconfig(oval, fill=LAMP[key][state])
+
+    def _set_all_dim(self):
+        for key in LAMP:
+            self._set_lamp(key, "dim")
+
+    def show_lamp_red(self):
+        self._stop_blink()
+        self._set_lamp("red", "bright")
+        self._set_lamp("yellow", "dim")
+        self._set_lamp("green", "dim")
+
+    def show_lamp_yellow_blinking(self):
+        self._set_lamp("red", "dim")
+        self._set_lamp("green", "dim")
+        self._start_blink()
+
+    def show_lamp_green(self):
+        self._stop_blink()
+        self._set_lamp("red", "dim")
+        self._set_lamp("yellow", "dim")
+        self._set_lamp("green", "bright")
+
+    def _start_blink(self):
+        self._stop_blink()
+        self._blink_phase = True
+        self._set_lamp("yellow", "bright")
+        self._blink_job = self.after(400, self._blink_tick)
+
+    def _blink_tick(self):
+        if self._blink_job is None:
+            return
+        self._blink_phase = not self._blink_phase
+        state = "bright" if self._blink_phase else "dim"
+        self._set_lamp("yellow", state)
+        self._blink_job = self.after(400, self._blink_tick)
+
+    def _stop_blink(self):
+        if self._blink_job:
+            self.after_cancel(self._blink_job)
+            self._blink_job = None
+        self._set_lamp("yellow", "dim")
+
     def get_text(self):
         return self.ref_text_widget.get("1.0", tk.END).strip()
 
@@ -192,5 +262,6 @@ class InputPanel(ctk.CTkFrame):
                 self.app.btn_start_shadowing.configure(state=tk.NORMAL)
                 self.app.btn_generate.configure(state=tk.DISABLED)
                 self.app._on_audio_loaded(path)
+                self.show_lamp_green()
             except Exception as e:
                 tk.messagebox.showerror("LOAD FAILED", f"Cannot load audio:\n{e}")

@@ -315,6 +315,7 @@ class ShadowingApp:
         )
         self.btn_start_shadowing.configure(state=tk.DISABLED)
         self.set_status("TEXT MODIFIED — CLICK [GENERATE AUDIO]")
+        self.input_panel.show_lamp_red()
 
     def _on_audio_loaded(self, audio_path: str):
         self._asr_words = []
@@ -334,6 +335,7 @@ class ShadowingApp:
                 self.set_status(
                     f"VOSK TRANSCRIPTION COMPLETE — {len(words)} WORDS"
                 )
+                self.input_panel.show_lamp_green()
                 print(f"[App] Vosk transcription: {len(words)} words")
             else:
                 self.set_status(
@@ -405,6 +407,7 @@ class ShadowingApp:
         self.btn_start_shadowing.configure(state=tk.DISABLED)
         self._ref_audio_path = None
         self._asr_words = []
+        self.input_panel.show_lamp_yellow_blinking()
 
         audio_path = self._generate_tts_audio(ref_text)
         if not audio_path:
@@ -413,6 +416,7 @@ class ShadowingApp:
                 fg_color=C["button_primary"], hover_color=C["button_hover"],
                 border_color=C["orange_dim"], text_color=C["button_text"],
             )
+            self.input_panel.show_lamp_red()
             return
 
         self._ref_audio_path = audio_path
@@ -426,6 +430,7 @@ class ShadowingApp:
                 fg_color=C["button_primary"], hover_color=C["button_hover"],
                 border_color=C["orange_dim"], text_color=C["button_text"],
             )
+            self.input_panel.show_lamp_red()
             return
 
         self.set_status("ANALYZING AUDIO TIMELINE...")
@@ -452,6 +457,7 @@ class ShadowingApp:
         self.set_status(
             f"AUDIO READY — DURATION: {self.audio_player.duration:.1f}s | CLICK [START SHADOWING]"
         )
+        self.input_panel.show_lamp_green()
 
     def _start_shadowing(self):
         ref_text = self.input_panel.get_text()
@@ -634,6 +640,7 @@ class ShadowingApp:
         )
         self.btn_start_shadowing.configure(state=tk.DISABLED)
         self.set_status(status_text)
+        self.input_panel.show_lamp_red()
 
     def _on_close(self):
         self._is_running = False
