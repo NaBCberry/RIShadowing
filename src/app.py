@@ -313,6 +313,8 @@ class ShadowingApp:
             text_color=C["button_text"],
             state=tk.NORMAL,
         )
+        self.btn_generate.unbind("<Enter>")
+        self.btn_generate.unbind("<Leave>")
         self.btn_start_shadowing.configure(state=tk.DISABLED)
         self.set_status("TEXT MODIFIED — CLICK [GENERATE AUDIO]")
         self.input_panel.show_lamp_red()
@@ -455,19 +457,45 @@ class ShadowingApp:
             print(f"[App] TTS timestamp analysis failed, using estimates: {e}")
 
         self._mode = "shadowing"
+        self._set_btn_accomplished()
+        self.btn_start_shadowing.configure(state=tk.NORMAL)
+        self.set_status(
+            f"AUDIO READY — DURATION: {self.audio_player.duration:.1f}s | CLICK [START SHADOWING]"
+        )
+        self.input_panel.show_lamp_green()
+
+    def _set_btn_accomplished(self):
         self.btn_generate.configure(
             text="GENERATION ACCOMPLISHED!",
             fg_color=C["green"],
             hover_color=C["green"],
             border_color=C["green_dim"],
             text_color=C["button_text"],
-            state=tk.DISABLED,
+            state=tk.NORMAL,
         )
-        self.btn_start_shadowing.configure(state=tk.NORMAL)
-        self.set_status(
-            f"AUDIO READY — DURATION: {self.audio_player.duration:.1f}s | CLICK [START SHADOWING]"
+        self.btn_generate.unbind("<Enter>")
+        self.btn_generate.unbind("<Leave>")
+        self.btn_generate.bind("<Enter>", self._on_btn_generate_enter)
+        self.btn_generate.bind("<Leave>", self._on_btn_generate_leave)
+
+    def _on_btn_generate_enter(self, event=None):
+        if self._ref_audio_path and os.path.exists(self._ref_audio_path):
+            self.btn_generate.configure(
+                text="REGENERATE?",
+                fg_color=C["button_primary"],
+                hover_color=C["button_hover"],
+                border_color=C["orange_dim"],
+                text_color=C["button_text"],
+            )
+
+    def _on_btn_generate_leave(self, event=None):
+        self.btn_generate.configure(
+            text="GENERATION ACCOMPLISHED!",
+            fg_color=C["green"],
+            hover_color=C["green"],
+            border_color=C["green_dim"],
+            text_color=C["button_text"],
         )
-        self.input_panel.show_lamp_green()
 
     def _start_shadowing(self):
         ref_text = self.input_panel.get_text()
@@ -663,14 +691,7 @@ class ShadowingApp:
         self.root.update_idletasks()
 
         if self._ref_audio_path and os.path.exists(self._ref_audio_path):
-            self.btn_generate.configure(
-                text="GENERATION ACCOMPLISHED!",
-                fg_color=C["green"],
-                hover_color=C["green"],
-                border_color=C["green_dim"],
-                text_color=C["button_text"],
-                state=tk.NORMAL,
-            )
+            self._set_btn_accomplished()
             self.btn_start_shadowing.configure(state=tk.NORMAL)
             self.input_panel.show_lamp_green()
         else:
@@ -682,6 +703,8 @@ class ShadowingApp:
                 text_color=C["button_text"],
                 state=tk.NORMAL,
             )
+            self.btn_generate.unbind("<Enter>")
+            self.btn_generate.unbind("<Leave>")
             self.btn_start_shadowing.configure(state=tk.DISABLED)
             self.input_panel.show_lamp_red()
 
