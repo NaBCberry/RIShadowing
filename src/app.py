@@ -439,7 +439,14 @@ class ShadowingApp:
             print(f"[App] TTS timestamp analysis failed, using estimates: {e}")
 
         self._mode = "shadowing"
-        self.btn_generate.configure(state=tk.DISABLED)
+        self.btn_generate.configure(
+            text="GENERATION ACCOMPLISHED!",
+            fg_color=C["green"],
+            hover_color=C["green"],
+            border_color=C["green_dim"],
+            text_color=C["button_text"],
+            state=tk.DISABLED,
+        )
         self.btn_start_shadowing.configure(state=tk.NORMAL)
         self.set_status(
             f"AUDIO READY — DURATION: {self.audio_player.duration:.1f}s | CLICK [START SHADOWING]"
@@ -504,9 +511,7 @@ class ShadowingApp:
         self.audio_player.stop()
         self.audio_recorder.stop()
         self.speech_recognizer.stop()
-        self._show_setup()
-        self.set_status("TERMINATED")
-        print("[App] shadowing stopped by user")
+        self.root.after(100, lambda: self._finish_transition("TERMINATED"))
 
     def _update_loop(self):
         if not self._is_running:
@@ -552,13 +557,16 @@ class ShadowingApp:
         if review_words:
             review_list = "  ".join(w["word"] for w in review_words[:8])
             print(f"[App] review suggestions: {review_list}")
-            self.display_panel.detail_text.configure(state="normal")
-            self.display_panel.detail_text.insert(
-                tk.END,
-                f"\nREVIEW: {review_list}\n"
-                f"(Underlined words have low confidence — practice recommended)",
-            )
-            self.display_panel.detail_text.configure(state="disabled")
+            try:
+                self.display_panel.detail_text.configure(state="normal")
+                self.display_panel.detail_text.insert(
+                    tk.END,
+                    f"\nREVIEW: {review_list}\n"
+                    f"(Underlined words have low confidence — practice recommended)",
+                )
+                self.display_panel.detail_text.configure(state="disabled")
+            except Exception:
+                pass
 
         mid = self.material_panel.get_current_material_id()
         if mid:
@@ -575,8 +583,19 @@ class ShadowingApp:
             except Exception as e:
                 print(f"[App] record practice error: {e}")
 
-        self._show_setup()
         self._mode = "generate"
+        final_status = (
+            f"TRAINING COMPLETE! ACCURACY: {score:.0%} | "
+            f"G:{accuracy_result.get('green_count', 0)} "
+            f"Y:{accuracy_result.get('yellow_count', 0)} "
+            f"R:{accuracy_result.get('red_count', 0)}"
+        )
+
+        self.root.after(100, lambda: self._finish_transition(final_status))
+
+    def _finish_transition(self, status_text):
+        self._show_setup()
+        self.root.update_idletasks()
         self.btn_generate.configure(
             text="GENERATE AUDIO",
             fg_color=C["button_primary"],
@@ -586,12 +605,7 @@ class ShadowingApp:
             state=tk.NORMAL,
         )
         self.btn_start_shadowing.configure(state=tk.DISABLED)
-        self.set_status(
-            f"TRAINING COMPLETE! ACCURACY: {score:.0%} | "
-            f"G:{accuracy_result.get('green_count', 0)} "
-            f"Y:{accuracy_result.get('yellow_count', 0)} "
-            f"R:{accuracy_result.get('red_count', 0)}"
-        )
+        self.set_status(status_text)
 
     def _on_close(self):
         self._is_running = False
