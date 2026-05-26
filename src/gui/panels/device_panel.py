@@ -21,11 +21,6 @@ class DevicePanel(ctk.CTkFrame):
         row = ctk.CTkFrame(self, fg_color="transparent")
         row.pack(fill=tk.X, padx=12, pady=(10, 4))
 
-        draw_hex_indicator(
-            tk.Canvas(row, width=20, height=20, bg=C["bg_panel"],
-                       highlightthickness=0).master if False else None,
-            0, 0, size=0,
-        )
         hex_cvs = tk.Canvas(
             row, width=20, height=20, bg=C["bg_panel"],
             highlightthickness=0,
