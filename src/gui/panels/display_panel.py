@@ -57,6 +57,8 @@ class DisplayPanel(ctk.CTkFrame):
             bg=C["bg_panel"], highlightthickness=0,
         )
         self.word_accuracy_canvas.pack(fill=tk.X)
+        self._accuracy_bar_ids = []
+        self._total_word_count = 0
 
         legend = tk.Frame(left_frame, bg=C["bg_panel"])
         legend.pack(fill=tk.X, pady=(4, 0))
@@ -133,6 +135,29 @@ class DisplayPanel(ctk.CTkFrame):
             end = len(self.ref_display.get("1.0", tk.END)) - 1
             self._ref_word_positions.append((start, end))
 
+        self._init_accuracy_bars(len(reference_words))
+
+    def _init_accuracy_bars(self, total: int):
+        self.word_accuracy_canvas.delete("all")
+        self._accuracy_bar_ids = []
+        self._total_word_count = total
+
+        canvas_w = self.word_accuracy_canvas.winfo_width()
+        if canvas_w < 50:
+            canvas_w = 400
+        h = 22
+        n = max(total, 1)
+        bar_w = max(canvas_w // n, 2)
+
+        for i in range(total):
+            x0 = i * bar_w
+            x1 = x0 + bar_w - 2
+            rid = self.word_accuracy_canvas.create_rectangle(
+                x0, 3, x1, h,
+                fill=C["fg_dim"], outline="",
+            )
+            self._accuracy_bar_ids.append(rid)
+
     def update_ref_highlight(self):
         if not self.app.comparator or not self.app._is_running:
             return
@@ -193,25 +218,16 @@ class DisplayPanel(ctk.CTkFrame):
         )
 
     def update_word_accuracy_bars(self, result: dict):
-        self.word_accuracy_canvas.delete("all")
         breakdown = result.get("breakdown", [])
-        canvas_w = self.word_accuracy_canvas.winfo_width()
-        if canvas_w < 50:
-            canvas_w = 400
-        h = 22
-        n = max(len(breakdown), 1)
-        bar_w = max(canvas_w // n, 2)
-
         color_map = {
             "green": C["green"],
             "yellow": C["yellow"],
             "red": C["red"],
         }
-
         for i, item in enumerate(breakdown):
-            x0 = i * bar_w
-            x1 = x0 + bar_w - 2
+            if i >= len(self._accuracy_bar_ids):
+                break
             fill = color_map.get(item.get("color", ""), C["fg_dim"])
-            self.word_accuracy_canvas.create_rectangle(
-                x0, 3, x1, h, fill=fill, outline=""
+            self.word_accuracy_canvas.itemconfig(
+                self._accuracy_bar_ids[i], fill=fill
             )
