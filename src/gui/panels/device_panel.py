@@ -1,72 +1,127 @@
 import customtkinter as ctk
 import tkinter as tk
-from src.gui.styles import C, FONT_FAMILY
+from src.gui.styles import C, FONT_FAMILY, draw_hex_indicator
 
 
 class DevicePanel(ctk.CTkFrame):
     def __init__(self, parent, app):
-        super().__init__(parent, fg_color=C["bg_panel"], corner_radius=8)
+        super().__init__(parent, fg_color=C["bg_panel"], corner_radius=0)
         self.app = app
         self._input_devices = []
         self._output_devices = []
         self._build()
 
     def _build(self):
+        top_bar = tk.Canvas(
+            self, height=2, bg=C["bg_panel"], highlightthickness=0,
+        )
+        top_bar.pack(fill=tk.X)
+        top_bar.create_line(0, 0, 9999, 0, fill=C["cyan_dim"], width=1)
+
         row = ctk.CTkFrame(self, fg_color="transparent")
-        row.pack(fill=tk.X, padx=10, pady=(8, 4))
+        row.pack(fill=tk.X, padx=12, pady=(10, 4))
+
+        hex_cvs = tk.Canvas(
+            row, width=20, height=20, bg=C["bg_panel"],
+            highlightthickness=0,
+        )
+        hex_cvs.pack(side=tk.LEFT)
+        draw_hex_indicator(hex_cvs, 10, 10, size=6, color=C["cyan"])
 
         ctk.CTkLabel(
-            row, text="🎤 麦克风 (Input):",
-            font=(FONT_FAMILY, 10), text_color=C["fg_primary"],
-        ).pack(side=tk.LEFT)
+            row, text="INPUT  ·  音频输入设备",
+            font=(FONT_FAMILY, 10, "bold"),
+            text_color=C["fg_primary"],
+        ).pack(side=tk.LEFT, padx=(2, 0))
+
+        ctk.CTkLabel(
+            row, text="OUTPUT",
+            font=(FONT_FAMILY, 9, "bold"),
+            text_color=C["orange"],
+        ).pack(side=tk.RIGHT, padx=(0, 4))
+
+        hex_cvs2 = tk.Canvas(
+            row, width=20, height=20, bg=C["bg_panel"],
+            highlightthickness=0,
+        )
+        hex_cvs2.pack(side=tk.RIGHT)
+        draw_hex_indicator(hex_cvs2, 10, 10, size=6, color=C["orange"])
+
+        sel_row = ctk.CTkFrame(self, fg_color="transparent")
+        sel_row.pack(fill=tk.X, padx=12, pady=(0, 8))
 
         self.input_menu = ctk.CTkOptionMenu(
-            row,
-            values=["默认设备"],
-            font=(FONT_FAMILY, 10),
+            sel_row,
+            values=["DEFAULT DEVICE"],
+            font=(FONT_FAMILY, 9),
             fg_color=C["bg_input"],
-            button_color=C["button_bg"],
-            button_hover_color=C["accent"],
+            button_color=C["button_secondary"],
+            button_hover_color=C["cyan_dim"],
             text_color=C["fg_primary"],
-            width=220,
+            width=260,
+            corner_radius=2,
+            dropdown_fg_color=C["bg_card"],
+            dropdown_text_color=C["fg_primary"],
+            dropdown_hover_color=C["bg_hover"],
             command=self._on_input_change,
         )
-        self.input_menu.pack(side=tk.LEFT, padx=(6, 20))
-
-        ctk.CTkLabel(
-            row, text="🔊 扬声器 (Output):",
-            font=(FONT_FAMILY, 10), text_color=C["fg_primary"],
-        ).pack(side=tk.LEFT)
+        self.input_menu.pack(side=tk.LEFT, padx=(0, 12))
 
         self.output_menu = ctk.CTkOptionMenu(
-            row,
-            values=["默认设备"],
-            font=(FONT_FAMILY, 10),
+            sel_row,
+            values=["DEFAULT DEVICE"],
+            font=(FONT_FAMILY, 9),
             fg_color=C["bg_input"],
-            button_color=C["button_bg"],
-            button_hover_color=C["accent"],
+            button_color=C["button_secondary"],
+            button_hover_color=C["orange_dim"],
             text_color=C["fg_primary"],
-            width=220,
+            width=260,
+            corner_radius=2,
+            dropdown_fg_color=C["bg_card"],
+            dropdown_text_color=C["fg_primary"],
+            dropdown_hover_color=C["bg_hover"],
             command=self._on_output_change,
         )
-        self.output_menu.pack(side=tk.LEFT, padx=(6, 0))
+        self.output_menu.pack(side=tk.RIGHT)
 
-        level_row = ctk.CTkFrame(self, fg_color="transparent")
-        level_row.pack(fill=tk.X, padx=10, pady=(2, 8))
+        level_frame = ctk.CTkFrame(self, fg_color="transparent")
+        level_frame.pack(fill=tk.X, padx=12, pady=(0, 10))
+
+        lvl_label = tk.Frame(level_frame, bg=C["bg_panel"])
+        lvl_label.pack(side=tk.LEFT)
+
+        lvl_cvs = tk.Canvas(
+            lvl_label, width=16, height=16,
+            bg=C["bg_panel"], highlightthickness=0,
+        )
+        lvl_cvs.pack(side=tk.LEFT)
+        draw_hex_indicator(lvl_cvs, 8, 8, size=5, color=C["green"], filled=False)
 
         ctk.CTkLabel(
-            level_row, text="📶 录音电平:",
-            font=(FONT_FAMILY, 10), text_color=C["fg_primary"],
+            lvl_label, text=" LEVEL",
+            font=(FONT_FAMILY, 9, "bold"),
+            text_color=C["fg_secondary"],
         ).pack(side=tk.LEFT)
 
         self.level_canvas = tk.Canvas(
-            level_row, height=18, bg=C["bg_input"],
+            level_frame, height=20, bg=C["bg_input"],
             highlightthickness=0,
         )
-        self.level_canvas.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(6, 0))
+        self.level_canvas.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(8, 0))
         self._level_bar = self.level_canvas.create_rectangle(
-            0, 0, 0, 18, fill=C["green"], outline=""
+            0, 0, 0, 20, fill=C["green"], outline=""
         )
+        self._level_glow = self.level_canvas.create_rectangle(
+            0, 0, 0, 20, fill=C["green"], outline="", stipple="gray50"
+        )
+
+        peak_frame = tk.Frame(level_frame, bg=C["bg_panel"])
+        peak_frame.pack(side=tk.LEFT, padx=(8, 0))
+        ctk.CTkLabel(
+            peak_frame, text="PEAK",
+            font=(FONT_FAMILY, 8),
+            text_color=C["fg_dim"],
+        ).pack()
 
     def scan_devices(self):
         try:
@@ -75,11 +130,11 @@ class DevicePanel(ctk.CTkFrame):
             self._input_devices = AudioRecorder.list_devices()
             self._output_devices = AudioPlayer.list_devices()
 
-            input_names = ["默认设备"] + [
-                f"{d['name'][:50]} (ch:{d['channels']})" for d in self._input_devices
+            input_names = ["DEFAULT DEVICE"] + [
+                f"{d['name'][:45]} (ch:{d['channels']})" for d in self._input_devices
             ]
-            output_names = ["默认设备"] + [
-                f"{d['name'][:50]} (ch:{d['channels']})" for d in self._output_devices
+            output_names = ["DEFAULT DEVICE"] + [
+                f"{d['name'][:45]} (ch:{d['channels']})" for d in self._output_devices
             ]
 
             self.input_menu.configure(values=input_names)
@@ -111,7 +166,8 @@ class DevicePanel(ctk.CTkFrame):
 
     def update_level_meter(self):
         if not self.app._is_running:
-            self.level_canvas.coords(self._level_bar, 0, 0, 0, 18)
+            self.level_canvas.coords(self._level_bar, 0, 0, 0, 20)
+            self.level_canvas.coords(self._level_glow, 0, 0, 0, 20)
             return
 
         level = self.app.audio_recorder.current_level
@@ -119,7 +175,7 @@ class DevicePanel(ctk.CTkFrame):
         if w < 10:
             w = 200
 
-        bar_w = int(level * w * 2)
+        bar_w = int(level * w * 2.5)
         bar_w = min(bar_w, w)
 
         if level > 0.85:
@@ -130,7 +186,11 @@ class DevicePanel(ctk.CTkFrame):
             color = C["green"]
 
         self.level_canvas.itemconfig(self._level_bar, fill=color)
-        self.level_canvas.coords(self._level_bar, 0, 0, bar_w, 18)
+        self.level_canvas.coords(self._level_bar, 0, 2, bar_w, 18)
+
+        glow_w = min(bar_w + 4, w)
+        self.level_canvas.itemconfig(self._level_glow, fill=color)
+        self.level_canvas.coords(self._level_glow, 0, 8, glow_w, 12)
 
     def set_state(self, enabled: bool):
         state = tk.NORMAL if enabled else tk.DISABLED

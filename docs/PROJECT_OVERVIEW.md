@@ -1,7 +1,8 @@
 # 影子跟读训练软件 — 项目概览
 
 > AI 驱动的英语影子跟读（Shadowing）桌面训练工具  
-> 当前版本：**v1.2** | 平台：Windows（可跨平台）
+> 当前版本：**v1.2** | 平台：Windows（可跨平台）  
+> UI 主题：**明日方舟（Arknights）暗色科幻工业风**
 
 ---
 
@@ -22,7 +23,7 @@
 
 | 层级 | 技术 | 说明 |
 |------|------|------|
-| **UI** | `customtkinter` + `tkinter` | 现代深色主题桌面 GUI |
+| **UI** | `customtkinter` + `tkinter` | 明日方舟风格暗色科幻 GUI，六边形装饰 + 青橙双色点缀 |
 | **音频 I/O** | `sounddevice` / `soundfile` | 录音与播放 |
 | **语音识别（实时）** | `vosk` | 离线实时 STT，Kaldi 内核 |
 | **语音识别（精密）** | OpenAI Whisper API (`openai`) | 在线高精度转写+逐词时间戳 |
@@ -60,6 +61,7 @@
 | 文件 | 职责 |
 |------|------|
 | `src/utils/config.py` | 配置管理：从硬编码默认值自动生成 `config.json` 和 `.env`；`init_config()` / `get_config()` / `deep_merge()` |
+| `src/utils/model_downloader.py` | 模型下载工具：从 alphacephei.com 下载 Vosk 模型 ZIP，解压到项目根目录，带进度回调 |
 
 #### `src/models/` — 数据层
 
@@ -91,13 +93,19 @@
 
 | 文件 | 职责 |
 |------|------|
-| `src/gui/styles.py` | 主题常量：Dracula 暗色调色板（`C` 字典）+ 字体 `Microsoft YaHei` |
-| `src/gui/panels/device_panel.py` | 设备选择 + 画布实时电平表（绿/黄/红） |
+| `src/gui/panels/feedback_panel.py` | 语速/准确率实时仪表盘（Canvas 水平进度条 + 发光效果） |
+
+#### `src/gui/` — 图形界面
+
+| 文件 | 职责 |
+|------|------|
+| `src/gui/styles.py` | 主题常量：明日方舟暗色调色板 + 六边形/边框装饰工具函数（`draw_hex_indicator`, `draw_panel_border`） |
+| `src/gui/panels/device_panel.py` | 设备选择 + 画布实时电平表（绿/黄/红发光效果） |
 | `src/gui/panels/input_panel.py` | 文本输入区 + TTS 引擎选择 + 文件加载 + Whisper 精密转写按钮 |
-| `src/gui/panels/control_panel.py` | 双模式主按钮（"生成语音" / "开始跟读"）+ 停止按钮 + 状态标签 |
-| `src/gui/panels/feedback_panel.py` | 语速/准确率实时仪表盘（Canvas 水平进度条） |
-| `src/gui/panels/display_panel.py` | 富文本展示区（~175 行）：左栏参考文本逐词高亮+准确率色条，右栏用户实时识别文本+低置信度标记，底部详细统计 |
-| `src/gui/panels/material_panel.py` | 素材库面板（~307 行）：可折叠、可搜索、CRUD 弹窗 |
+| `src/gui/panels/feedback_panel.py` | 语速/准确率实时仪表盘（Canvas 水平进度条 + 发光效果）——仅训练屏可见 |
+| `src/gui/panels/display_panel.py` | 富文本展示区：左栏参考文本逐词高亮+准确率色条，右栏用户实时识别文本+低置信度标记，底部详细统计——仅训练屏可见 |
+| `src/gui/panels/material_panel.py` | 素材库面板：可折叠、可搜索、CRUD 弹窗——仅设置屏可见 |
+| `src/gui/panels/download_dialog.py` | 模型下载弹窗：启动时未找到模型时弹出，可选小/大模型，显示下载+解压进度条 |
 
 ---
 
@@ -117,28 +125,45 @@ main.py ──► ShadowingApp (src/app.py)
               ├─ services/asr/*            # 离线/在线文字转写
               ├─ services/tts/*            # 多引擎语音合成
               │
-              └─ gui/panels/*              # 6 个 UI 面板
+               └─ gui/panels/*              # 6 个 UI 面板
 ```
 
-### 状态机
+### 状态机 + 双屏布局
 
 ```
+┌─────────────────────────────────────┐
+│  SETUP SCREEN（设置屏）               │
+│  ┌─────────────────────────────────┐│
+│  │ Device Panel (Input/Output)     ││
+│  │ Input Panel (Text + TTS Engine) ││
+│  │ Material Panel (collapsible)    ││
+│  ├─────────────────────────────────┤│
+│  │ [GENERATE AUDIO] [START SHADOWING] ││
+│  └─────────────────────────────────┘│
+└─────────────────────────────────────┘
   [输入文本/加载素材]
         │
         ▼
-  MODE: generate       按钮：「🎙 生成语音」
+  MODE: generate       按钮：「GENERATE AUDIO」
         │ 点击
         ▼
   TTS 合成 → Vosk 打轴 → 加载播放器
         │
         ▼
-  MODE: shadowing      按钮：「▶ 开始跟读」
+  MODE: shadowing      按钮：「START SHADOWING」
         │ 点击
         ▼
-  RUNNING: 播放 + 录音 + 实时 STT + 对比评分
-        │ 播放结束/手动停止
-        ▼
-  FINISHED: 显示总分 + 低置信度词复习列表 + 保存记录
+┌─────────────────────────────────────┐
+│  TRAINING SCREEN（训练屏）            │
+│  ┌─────────────────────────────────┐│
+│  │ Feedback Panel (Speed + Accuracy) ││
+│  │ Display Panel (Ref + User Text)  ││
+│  ├─────────────────────────────────┤│
+│  │ [TERMINATE]                     ││
+│  └─────────────────────────────────┘│
+│  RUNNING: 播放 + 录音 + 实时 STT     │
+│  + 对比评分 → 播放结束自动返回设置屏   │
+└─────────────────────────────────────┘
 ```
 
 ### 数据流（训练过程中）
@@ -189,13 +214,13 @@ main.py ──► ShadowingApp (src/app.py)
 - **懒加载导入**：外部依赖在函数内部 `import`，避免循环引用和可选依赖问题
 - **Print 日志**：全项目使用 `[ModuleName]` 前缀的 `print()` 日志
 - **优雅降级**：所有外部依赖包裹 `try/except`，失败时有中文提示
-- **中英双语**：代码标识符用英文，UI 文本用中文
+- **中英双语**：代码标识符用英文，UI 文本为 Arknights 风格英文大写（原为中文）
 
 ---
 
 ## 当前功能清单
 
-- [x] 自定义 Tkinter 深色主题 UI（Dracula 风格）
+- [x] 自定义 Tkinter 明日方舟风格 UI（暗色科幻工业风 + 六边形装饰 + 青橙双色点缀）
 - [x] 文本输入 + 文件加载（TXT / 粘贴）
 - [x] 三引擎 TTS 合成参考语音（Edge 在线 + Piper 离线 + pyttsx3 离线）
 - [x] 在线/离线音频转写打轴（Vosk 离线 + Whisper API 在线）
@@ -212,6 +237,7 @@ main.py ──► ShadowingApp (src/app.py)
 - [x] 按钮模式切换（生成语音 ↔ 开始跟读）
 - [x] 文本修改自动检测
 - [x] 首次启动自动生成 `config.json` + `.env`
+- [x] Vosk 模型自动下载（启动时弹窗，可选小模型 40MB / 大模型 1.8GB，带进度条）
 
 ---
 
