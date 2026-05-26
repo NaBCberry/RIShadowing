@@ -166,15 +166,18 @@ class MaterialPanel(ctk.CTkFrame):
             self.app._ref_audio_path = material.audio_path
             try:
                 self.app.audio_player.load_file(material.audio_path)
-                self.app.control_panel.set_status(
+                self.app.set_status(
                     f"LOADED: {material.title} — DURATION: {material.duration:.1f}s"
                 )
+                self.app._mode = "shadowing"
+                self.app.btn_start_shadowing.configure(state=tk.NORMAL)
+                self.app.btn_generate.configure(state=tk.DISABLED)
                 self.app._on_audio_loaded(material.audio_path)
             except Exception as e:
                 print(f"[MaterialPanel] load audio error: {e}")
         else:
             self.app._ref_audio_path = None
-            self.app.control_panel.set_status(
+            self.app.set_status(
                 f"SELECTED: {material.title} (NO AUDIO — WILL USE TTS)"
             )
         print(f"[MaterialPanel] selected: {material.title}")

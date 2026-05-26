@@ -185,10 +185,12 @@ class InputPanel(ctk.CTkFrame):
             try:
                 self.app.audio_player.load_file(path)
                 dur = self.app.audio_player.duration
-                self.app.control_panel.set_status(
+                self.app.set_status(
                     f"REFERENCE AUDIO LOADED — DURATION: {dur:.1f}s"
                 )
-                self.app.control_panel.set_mode("shadowing")
+                self.app._mode = "shadowing"
+                self.app.btn_start_shadowing.configure(state=tk.NORMAL)
+                self.app.btn_generate.configure(state=tk.DISABLED)
                 self.app._on_audio_loaded(path)
             except Exception as e:
                 tk.messagebox.showerror("LOAD FAILED", f"Cannot load audio:\n{e}")

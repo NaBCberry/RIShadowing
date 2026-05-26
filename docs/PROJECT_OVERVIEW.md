@@ -92,13 +92,18 @@
 
 | 文件 | 职责 |
 |------|------|
+| `src/gui/panels/feedback_panel.py` | 语速/准确率实时仪表盘（Canvas 水平进度条 + 发光效果） |
+
+#### `src/gui/` — 图形界面
+
+| 文件 | 职责 |
+|------|------|
 | `src/gui/styles.py` | 主题常量：明日方舟暗色调色板 + 六边形/边框装饰工具函数（`draw_hex_indicator`, `draw_panel_border`） |
-| `src/gui/panels/device_panel.py` | 设备选择 + 画布实时电平表（绿/黄/红） |
+| `src/gui/panels/device_panel.py` | 设备选择 + 画布实时电平表（绿/黄/红发光效果） |
 | `src/gui/panels/input_panel.py` | 文本输入区 + TTS 引擎选择 + 文件加载 + Whisper 精密转写按钮 |
-| `src/gui/panels/control_panel.py` | 双模式主按钮（"生成语音" / "开始跟读"）+ 停止按钮 + 状态标签 |
-| `src/gui/panels/feedback_panel.py` | 语速/准确率实时仪表盘（Canvas 水平进度条） |
-| `src/gui/panels/display_panel.py` | 富文本展示区（~175 行）：左栏参考文本逐词高亮+准确率色条，右栏用户实时识别文本+低置信度标记，底部详细统计 |
-| `src/gui/panels/material_panel.py` | 素材库面板（~307 行）：可折叠、可搜索、CRUD 弹窗 |
+| `src/gui/panels/feedback_panel.py` | 语速/准确率实时仪表盘（Canvas 水平进度条 + 发光效果）——仅训练屏可见 |
+| `src/gui/panels/display_panel.py` | 富文本展示区：左栏参考文本逐词高亮+准确率色条，右栏用户实时识别文本+低置信度标记，底部详细统计——仅训练屏可见 |
+| `src/gui/panels/material_panel.py` | 素材库面板：可折叠、可搜索、CRUD 弹窗——仅设置屏可见 |
 
 ---
 
@@ -118,28 +123,45 @@ main.py ──► ShadowingApp (src/app.py)
               ├─ services/asr/*            # 离线/在线文字转写
               ├─ services/tts/*            # 多引擎语音合成
               │
-              └─ gui/panels/*              # 6 个 UI 面板
+               └─ gui/panels/*              # 5 个 UI 面板
 ```
 
-### 状态机
+### 状态机 + 双屏布局
 
 ```
+┌─────────────────────────────────────┐
+│  SETUP SCREEN（设置屏）               │
+│  ┌─────────────────────────────────┐│
+│  │ Device Panel (Input/Output)     ││
+│  │ Input Panel (Text + TTS Engine) ││
+│  │ Material Panel (collapsible)    ││
+│  ├─────────────────────────────────┤│
+│  │ [GENERATE AUDIO] [START SHADOWING] ││
+│  └─────────────────────────────────┘│
+└─────────────────────────────────────┘
   [输入文本/加载素材]
         │
         ▼
-  MODE: generate       按钮：「🎙 生成语音」
+  MODE: generate       按钮：「GENERATE AUDIO」
         │ 点击
         ▼
   TTS 合成 → Vosk 打轴 → 加载播放器
         │
         ▼
-  MODE: shadowing      按钮：「▶ 开始跟读」
+  MODE: shadowing      按钮：「START SHADOWING」
         │ 点击
         ▼
-  RUNNING: 播放 + 录音 + 实时 STT + 对比评分
-        │ 播放结束/手动停止
-        ▼
-  FINISHED: 显示总分 + 低置信度词复习列表 + 保存记录
+┌─────────────────────────────────────┐
+│  TRAINING SCREEN（训练屏）            │
+│  ┌─────────────────────────────────┐│
+│  │ Feedback Panel (Speed + Accuracy) ││
+│  │ Display Panel (Ref + User Text)  ││
+│  ├─────────────────────────────────┤│
+│  │ [TERMINATE]                     ││
+│  └─────────────────────────────────┘│
+│  RUNNING: 播放 + 录音 + 实时 STT     │
+│  + 对比评分 → 播放结束自动返回设置屏   │
+└─────────────────────────────────────┘
 ```
 
 ### 数据流（训练过程中）

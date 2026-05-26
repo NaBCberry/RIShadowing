@@ -14,7 +14,6 @@ from src.services.asr import create_asr_engine
 from src.gui.styles import C, FONT_FAMILY, draw_hex_indicator, draw_panel_border
 from src.gui.panels.device_panel import DevicePanel
 from src.gui.panels.input_panel import InputPanel
-from src.gui.panels.control_panel import ControlPanel
 from src.gui.panels.feedback_panel import FeedbackPanel
 from src.gui.panels.display_panel import DisplayPanel
 from src.gui.panels.material_panel import MaterialPanel
@@ -45,42 +44,23 @@ class ShadowingApp:
         self._selected_output_device = None
         self._asr_words = []
         self._current_material_id = None
+        self._mode = "generate"
 
         init_db()
 
-        self._build_ui()
+        self._build_title_bar()
+        self._build_setup_screen()
+        self._build_training_screen()
         self._check_speech_model()
         self.device_panel.scan_devices()
+
+        self._show_setup()
 
         print("=" * 54)
         print("  R.I. Shadowing Practice v1.2 — Arknights UI")
         print("=" * 54)
 
         self.root.protocol("WM_DELETE_WINDOW", self._on_close)
-
-    def _build_ui(self):
-        self._build_title_bar()
-
-        main = ctk.CTkFrame(self.root, fg_color="transparent")
-        main.pack(fill=tk.BOTH, expand=True, padx=14, pady=(0, 10))
-
-        self.device_panel = DevicePanel(main, self)
-        self.device_panel.pack(fill=tk.X, pady=(0, 8))
-
-        self.input_panel = InputPanel(main, self)
-        self.input_panel.pack(fill=tk.X, pady=(0, 8))
-
-        self.material_panel = MaterialPanel(main, self)
-        self.material_panel.pack(fill=tk.X, pady=(0, 8))
-
-        self.control_panel = ControlPanel(main, self)
-        self.control_panel.pack(fill=tk.X, pady=(0, 8))
-
-        self.feedback_panel = FeedbackPanel(main, self)
-        self.feedback_panel.pack(fill=tk.X, pady=(0, 8))
-
-        self.display_panel = DisplayPanel(main, self)
-        self.display_panel.pack(fill=tk.BOTH, expand=True)
 
     def _build_title_bar(self):
         title_bar = tk.Frame(
@@ -119,33 +99,165 @@ class ShadowingApp:
             fill=C["fg_secondary"],
         )
 
-        decor_x = 1100
-        border_canvas.create_line(
-            decor_x, 10, decor_x + 20, 10, fill=C["cyan_dim"], width=1
-        )
-        border_canvas.create_line(
-            decor_x, 36, decor_x + 20, 36, fill=C["orange_dim"], width=1
-        )
+    def _build_setup_screen(self):
+        self.setup_screen = ctk.CTkFrame(self.root, fg_color="transparent")
 
-        corner = 1130
-        border_canvas.create_line(
-            corner, 14, corner, 6, corner, 6, corner + 14, 6,
-            fill=C["cyan_dim"], width=1,
+        main = ctk.CTkFrame(self.setup_screen, fg_color="transparent")
+        main.pack(fill=tk.BOTH, expand=True, padx=14, pady=(6, 0))
+
+        self.device_panel = DevicePanel(main, self)
+        self.device_panel.pack(fill=tk.X, pady=(0, 8))
+
+        self.input_panel = InputPanel(main, self)
+        self.input_panel.pack(fill=tk.X, pady=(0, 8))
+
+        self.material_panel = MaterialPanel(main, self)
+        self.material_panel.pack(fill=tk.X, pady=(0, 8))
+
+        bottom = ctk.CTkFrame(self.setup_screen, fg_color=C["bg_panel"])
+        bottom.pack(fill=tk.X, side=tk.BOTTOM, padx=14, pady=(0, 10))
+
+        top_line = tk.Canvas(
+            bottom, height=2, bg=C["bg_panel"], highlightthickness=0,
         )
-        border_canvas.create_line(
-            corner, 34, corner, 42, corner, 42, corner + 14, 42,
-            fill=C["orange_dim"], width=1,
+        top_line.pack(fill=tk.X)
+        top_line.create_line(0, 0, 9999, 0, fill=C["orange_dim"], width=1)
+
+        btn_frame = ctk.CTkFrame(bottom, fg_color="transparent")
+        btn_frame.pack(pady=(12, 6))
+
+        self.btn_generate = ctk.CTkButton(
+            btn_frame,
+            text="GENERATE AUDIO",
+            font=(FONT_FAMILY, 12, "bold"),
+            fg_color=C["button_primary"],
+            hover_color=C["button_hover"],
+            text_color=C["button_text"],
+            border_width=1,
+            border_color=C["orange_dim"],
+            corner_radius=2,
+            width=240,
+            height=42,
+            command=self._generate_and_prepare,
         )
+        self.btn_generate.pack(side=tk.LEFT, padx=(0, 10))
+
+        self.btn_start_shadowing = ctk.CTkButton(
+            btn_frame,
+            text="START SHADOWING",
+            font=(FONT_FAMILY, 12, "bold"),
+            fg_color=C["cyan_dim"],
+            hover_color=C["cyan"],
+            text_color=C["fg_primary"],
+            border_width=1,
+            border_color=C["cyan_dim"],
+            corner_radius=2,
+            width=240,
+            height=42,
+            command=self._start_shadowing,
+            state=tk.DISABLED,
+        )
+        self.btn_start_shadowing.pack(side=tk.LEFT)
+
+        status_frame = ctk.CTkFrame(bottom, fg_color="transparent")
+        status_frame.pack(fill=tk.X, padx=12, pady=(0, 10))
+
+        hex_cvs = tk.Canvas(
+            status_frame, width=16, height=16,
+            bg=C["bg_panel"], highlightthickness=0,
+        )
+        hex_cvs.pack(side=tk.LEFT)
+        draw_hex_indicator(hex_cvs, 8, 8, size=4, color=C["cyan"], filled=False)
+
+        self.setup_status = ctk.CTkLabel(
+            status_frame,
+            text="STANDBY — INPUT TEXT AND CLICK [GENERATE AUDIO]",
+            font=(FONT_FAMILY, 9),
+            text_color=C["fg_secondary"],
+        )
+        self.setup_status.pack(side=tk.LEFT, padx=(4, 0))
+
+    def _build_training_screen(self):
+        self.training_screen = ctk.CTkFrame(self.root, fg_color="transparent")
+
+        main = ctk.CTkFrame(self.training_screen, fg_color="transparent")
+        main.pack(fill=tk.BOTH, expand=True, padx=14, pady=(6, 0))
+
+        self.feedback_panel = FeedbackPanel(main, self)
+        self.feedback_panel.pack(fill=tk.X, pady=(0, 8))
+
+        self.display_panel = DisplayPanel(main, self)
+        self.display_panel.pack(fill=tk.BOTH, expand=True)
+
+        bottom = ctk.CTkFrame(self.training_screen, fg_color=C["bg_panel"])
+        bottom.pack(fill=tk.X, side=tk.BOTTOM, padx=14, pady=(0, 10))
+
+        top_line = tk.Canvas(
+            bottom, height=2, bg=C["bg_panel"], highlightthickness=0,
+        )
+        top_line.pack(fill=tk.X)
+        top_line.create_line(0, 0, 9999, 0, fill=C["red_dim"], width=1)
+
+        btn_frame = ctk.CTkFrame(bottom, fg_color="transparent")
+        btn_frame.pack(pady=(12, 6))
+
+        self.btn_terminate = ctk.CTkButton(
+            btn_frame,
+            text="TERMINATE",
+            font=(FONT_FAMILY, 12, "bold"),
+            fg_color=C["button_stop"],
+            hover_color=C["button_stop_hover"],
+            text_color=C["fg_primary"],
+            border_width=1,
+            border_color=C["red_dim"],
+            corner_radius=2,
+            width=260,
+            height=42,
+            command=self._stop_shadowing,
+        )
+        self.btn_terminate.pack()
+
+        status_frame = ctk.CTkFrame(bottom, fg_color="transparent")
+        status_frame.pack(fill=tk.X, padx=12, pady=(0, 10))
+
+        hex_cvs = tk.Canvas(
+            status_frame, width=16, height=16,
+            bg=C["bg_panel"], highlightthickness=0,
+        )
+        hex_cvs.pack(side=tk.LEFT)
+        draw_hex_indicator(hex_cvs, 8, 8, size=4, color=C["red"], filled=False)
+
+        self.training_status = ctk.CTkLabel(
+            status_frame,
+            text="",
+            font=(FONT_FAMILY, 9),
+            text_color=C["fg_secondary"],
+        )
+        self.training_status.pack(side=tk.LEFT, padx=(4, 0))
+
+    def _show_setup(self):
+        self.training_screen.pack_forget()
+        self.setup_screen.pack(fill=tk.BOTH, expand=True)
+
+    def _show_training(self):
+        self.setup_screen.pack_forget()
+        self.training_screen.pack(fill=tk.BOTH, expand=True)
+
+    def set_status(self, text):
+        self.setup_status.configure(text=text)
+
+    def set_training_status(self, text):
+        self.training_status.configure(text=text)
 
     def _check_speech_model(self):
         self._model_ready = self.speech_recognizer.initialize()
         if self._model_ready:
             model_path = self.speech_recognizer._model_path
             model_name = os.path.basename(model_path) if model_path else "en-us"
-            self.control_panel.set_status(f"SPEECH MODEL READY — {model_name}")
+            self.set_status(f"SPEECH MODEL READY — {model_name}")
             print(f"[App] Vosk model ready: {model_path}")
         else:
-            self.control_panel.set_status(
+            self.set_status(
                 "WARNING: Vosk model not found — download and extract to project root\n"
                 "URL: https://alphacephei.com/vosk/models"
             )
@@ -154,8 +266,17 @@ class ShadowingApp:
     def _on_text_changed(self):
         self._ref_audio_path = None
         self._asr_words = []
-        self.control_panel.set_mode("generate")
-        self.control_panel.set_status("TEXT MODIFIED — CLICK [GENERATE AUDIO]")
+        self._mode = "generate"
+        self.btn_generate.configure(
+            text="GENERATE AUDIO",
+            fg_color=C["button_primary"],
+            hover_color=C["button_hover"],
+            border_color=C["orange_dim"],
+            text_color=C["button_text"],
+            state=tk.NORMAL,
+        )
+        self.btn_start_shadowing.configure(state=tk.DISABLED)
+        self.set_status("TEXT MODIFIED — CLICK [GENERATE AUDIO]")
 
     def _on_audio_loaded(self, audio_path: str):
         self._asr_words = []
@@ -163,7 +284,7 @@ class ShadowingApp:
 
     def _transcribe_with_vosk(self, audio_path: str):
         try:
-            self.control_panel.set_status("TRANSCRIBING VIA VOSK...")
+            self.set_status("TRANSCRIBING VIA VOSK...")
             self.root.update()
             engine = create_asr_engine("vosk")
             result = engine.transcribe(audio_path)
@@ -172,23 +293,23 @@ class ShadowingApp:
             if text:
                 self.input_panel.set_text(text)
                 self._asr_words = words
-                self.control_panel.set_status(
+                self.set_status(
                     f"VOSK TRANSCRIPTION COMPLETE — {len(words)} WORDS"
                 )
                 print(f"[App] Vosk transcription: {len(words)} words")
             else:
-                self.control_panel.set_status(
+                self.set_status(
                     "WARNING: No speech detected — please enter reference text manually"
                 )
         except Exception as e:
             print(f"[App] Vosk transcription error: {e}")
-            self.control_panel.set_status("WARNING: Offline transcription failed")
+            self.set_status("WARNING: Offline transcription failed")
 
     def _transcribe_with_whisper(self):
         if not self._ref_audio_path:
             return
         try:
-            self.control_panel.set_status("WHISPER API TRANSCRIBING...")
+            self.set_status("WHISPER API TRANSCRIBING...")
             self.root.update()
             from src.utils.config import get_env
             env = get_env()
@@ -206,7 +327,7 @@ class ShadowingApp:
             if text:
                 self.input_panel.set_text(text)
                 self._asr_words = words
-                self.control_panel.set_status(
+                self.set_status(
                     f"WHISPER TRANSCRIPTION COMPLETE — {len(words)} WORDS WITH TIMESTAMPS"
                 )
                 print(f"[App] Whisper transcription: {len(words)} words with timestamps")
@@ -215,7 +336,7 @@ class ShadowingApp:
 
     def _generate_tts_audio(self, text: str) -> str:
         engine_key = self.input_panel.get_selected_tts_engine()
-        self.control_panel.set_status(f"SYNTHESIZING VIA {engine_key.upper()}...")
+        self.set_status(f"SYNTHESIZING VIA {engine_key.upper()}...")
         self.root.update()
 
         try:
@@ -242,13 +363,18 @@ class ShadowingApp:
             )
             return
 
-        self.control_panel.set_mode("loading")
+        self.btn_generate.configure(state=tk.DISABLED, text="PROCESSING...")
+        self.btn_start_shadowing.configure(state=tk.DISABLED)
         self._ref_audio_path = None
         self._asr_words = []
 
         audio_path = self._generate_tts_audio(ref_text)
         if not audio_path:
-            self.control_panel.set_mode("generate")
+            self.btn_generate.configure(
+                state=tk.NORMAL, text="GENERATE AUDIO",
+                fg_color=C["button_primary"], hover_color=C["button_hover"],
+                border_color=C["orange_dim"], text_color=C["button_text"],
+            )
             return
 
         self._ref_audio_path = audio_path
@@ -257,10 +383,14 @@ class ShadowingApp:
             self.audio_player.load_file(audio_path)
         except Exception as e:
             messagebox.showerror("AUDIO LOAD FAILED", str(e))
-            self.control_panel.set_mode("generate")
+            self.btn_generate.configure(
+                state=tk.NORMAL, text="GENERATE AUDIO",
+                fg_color=C["button_primary"], hover_color=C["button_hover"],
+                border_color=C["orange_dim"], text_color=C["button_text"],
+            )
             return
 
-        self.control_panel.set_status("ANALYZING AUDIO TIMELINE...")
+        self.set_status("ANALYZING AUDIO TIMELINE...")
         self.root.update()
         try:
             engine = create_asr_engine("vosk")
@@ -271,8 +401,10 @@ class ShadowingApp:
         except Exception as e:
             print(f"[App] TTS timestamp analysis failed, using estimates: {e}")
 
-        self.control_panel.set_mode("shadowing")
-        self.control_panel.set_status(
+        self._mode = "shadowing"
+        self.btn_generate.configure(state=tk.DISABLED)
+        self.btn_start_shadowing.configure(state=tk.NORMAL)
+        self.set_status(
             f"AUDIO READY — DURATION: {self.audio_player.duration:.1f}s | CLICK [START SHADOWING]"
         )
 
@@ -283,14 +415,13 @@ class ShadowingApp:
             return
 
         if not self._ref_audio_path:
-            self.control_panel.set_mode("generate")
-            self.control_panel.set_status("WARNING: Click [GENERATE AUDIO] first")
+            self.set_status("WARNING: Click [GENERATE AUDIO] first")
             return
 
         try:
             self.audio_player.load_file(self._ref_audio_path)
         except Exception as e:
-            messagebox.showerror("音频加载失败", str(e))
+            messagebox.showerror("AUDIO LOAD FAILED", str(e))
             return
 
         self.audio_player._device = self._selected_output_device
@@ -322,15 +453,13 @@ class ShadowingApp:
         self._is_running = True
         self._practice_start_time = time.time()
 
-        self.control_panel.set_button_states(True)
-        self.device_panel.set_state(False)
+        self._show_training()
+        self.set_training_status("TRAINING IN PROGRESS — FOLLOW THE AUDIO...")
 
         def on_audio_finished():
             self.root.after(0, self._on_practice_finished)
 
         self.audio_player.play(on_finished=on_audio_finished)
-
-        self.control_panel.set_status("TRAINING IN PROGRESS — FOLLOW THE AUDIO...")
         self.root.after(300, self._update_loop)
 
     def _stop_shadowing(self):
@@ -338,9 +467,8 @@ class ShadowingApp:
         self.audio_player.stop()
         self.audio_recorder.stop()
         self.speech_recognizer.stop()
-        self.control_panel.set_button_states(False)
-        self.device_panel.set_state(True)
-        self.control_panel.set_status("TERMINATED")
+        self._show_setup()
+        self.set_status("TERMINATED")
         print("[App] shadowing stopped by user")
 
     def _update_loop(self):
@@ -350,10 +478,6 @@ class ShadowingApp:
         if not self.audio_player.is_playing:
             self._on_practice_finished()
             return
-
-        self.device_panel.update_level_meter()
-
-        self.display_panel.update_ref_highlight()
 
         if self.comparator and self._is_running:
             recognized_words = self.speech_recognizer.get_latest_words()
@@ -368,6 +492,7 @@ class ShadowingApp:
             self.display_panel.update_user_display(recognized_words, accuracy_result)
             self.display_panel.update_detail(recognized_words, accuracy_result)
 
+        self.display_panel.update_ref_highlight()
         self.root.after(200, self._update_loop)
 
     def _on_practice_finished(self):
@@ -376,8 +501,6 @@ class ShadowingApp:
         self._is_running = False
         self.audio_recorder.stop()
         self.speech_recognizer.stop()
-        self.control_panel.set_button_states(False)
-        self.device_panel.set_state(True)
 
         recognized_words = self.speech_recognizer.get_latest_words()
         ref_elapsed = self.audio_player.duration
@@ -388,13 +511,6 @@ class ShadowingApp:
         for w in recognized_words[:5]:
             print(f"  [{w['word']}] conf={w['conf']:.2f}")
 
-        self.control_panel.set_status(
-            f"TRAINING COMPLETE! ACCURACY: {score:.0%} | "
-            f"G:{accuracy_result.get('green_count', 0)} "
-            f"Y:{accuracy_result.get('yellow_count', 0)} "
-            f"R:{accuracy_result.get('red_count', 0)}"
-        )
-
         review_words = [w for w in recognized_words if w.get("conf", 1.0) < 0.7]
         if review_words:
             review_list = "  ".join(w["word"] for w in review_words[:8])
@@ -402,8 +518,8 @@ class ShadowingApp:
             self.display_panel.detail_text.configure(state="normal")
             self.display_panel.detail_text.insert(
                 tk.END,
-                f"\n📝 建议复习: {review_list}\n"
-                f"(带下划线的词为发音置信度较低，可重点练习)",
+                f"\nREVIEW: {review_list}\n"
+                f"(Underlined words have low confidence — practice recommended)",
             )
             self.display_panel.detail_text.configure(state="disabled")
 
@@ -421,6 +537,24 @@ class ShadowingApp:
                 print(f"[App] recorded practice for material id={mid}")
             except Exception as e:
                 print(f"[App] record practice error: {e}")
+
+        self._show_setup()
+        self._mode = "generate"
+        self.btn_generate.configure(
+            text="GENERATE AUDIO",
+            fg_color=C["button_primary"],
+            hover_color=C["button_hover"],
+            border_color=C["orange_dim"],
+            text_color=C["button_text"],
+            state=tk.NORMAL,
+        )
+        self.btn_start_shadowing.configure(state=tk.DISABLED)
+        self.set_status(
+            f"TRAINING COMPLETE! ACCURACY: {score:.0%} | "
+            f"G:{accuracy_result.get('green_count', 0)} "
+            f"Y:{accuracy_result.get('yellow_count', 0)} "
+            f"R:{accuracy_result.get('red_count', 0)}"
+        )
 
     def _on_close(self):
         self._is_running = False
