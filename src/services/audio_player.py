@@ -76,8 +76,9 @@ class AudioPlayer:
                 if self._device is not None:
                     stream_kwargs["device"] = self._device
 
-                self._stream = sd.OutputStream(**stream_kwargs)
-                self._stream.start()
+                stream = sd.OutputStream(**stream_kwargs)
+                self._stream = stream
+                stream.start()
 
                 chunk_size = 1024
                 total_frames = len(self._audio_data)
@@ -85,14 +86,15 @@ class AudioPlayer:
 
                 while pos < total_frames and self._is_playing:
                     end = min(pos + chunk_size, total_frames)
-                    self._stream.write(self._audio_data[pos:end])
+                    stream.write(self._audio_data[pos:end])
                     pos = end
                     with self._lock:
                         self._position = pos / self._sample_rate
 
-                self._stream.stop()
-                self._stream.close()
-                self._stream = None
+                if self._stream is stream:
+                    self._stream = None
+                    stream.stop()
+                    stream.close()
             except Exception as e:
                 print(f"[AudioPlayer] error: {e}")
             finally:
@@ -106,10 +108,14 @@ class AudioPlayer:
 
     def stop(self):
         self._is_playing = False
-        if self._stream:
+        stream = self._stream
+        self._stream = None
+        if stream:
             try:
-                self._stream.stop()
-                self._stream.close()
+                stream.abort()
             except Exception:
                 pass
-            self._stream = None
+            try:
+                stream.close()
+            except Exception:
+                pass

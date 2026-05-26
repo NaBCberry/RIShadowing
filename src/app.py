@@ -539,11 +539,24 @@ class ShadowingApp:
             self._stop_shadowing()
 
     def _stop_shadowing(self):
+        print("[App] _stop_shadowing called")
         self._is_running = False
-        self.audio_player.stop()
-        self.audio_recorder.stop()
-        self.speech_recognizer.stop()
-        self.root.after(150, self._show_results)
+        try:
+            self.audio_player.stop()
+            print("[App] audio_player stopped")
+        except Exception as e:
+            print(f"[App] audio_player.stop error: {e}")
+        try:
+            self.audio_recorder.stop()
+            print("[App] audio_recorder stopped")
+        except Exception as e:
+            print(f"[App] audio_recorder.stop error: {e}")
+        try:
+            self.speech_recognizer.stop()
+            print("[App] speech_recognizer stopped")
+        except Exception as e:
+            print(f"[App] speech_recognizer.stop error: {e}")
+        self.root.after(200, self._show_results)
 
     def _show_results(self):
         try:
