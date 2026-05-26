@@ -177,6 +177,20 @@ class ShadowingApp:
         )
         self.setup_status.pack(side=tk.LEFT, padx=(4, 0))
 
+        self.btn_download_model = ctk.CTkButton(
+            status_frame, text="DOWNLOAD MODEL",
+            font=(FONT_FAMILY, 8, "bold"),
+            fg_color="transparent",
+            hover_color=C["bg_hover"],
+            text_color=C["fg_dim"],
+            border_width=1,
+            border_color=C["fg_dim"],
+            corner_radius=2,
+            width=120, height=22,
+            command=self._prompt_model_download,
+        )
+        self.btn_download_model.pack(side=tk.RIGHT)
+
     def _build_training_screen(self):
         self.training_screen = ctk.CTkFrame(self.root, fg_color="transparent")
 
@@ -258,10 +272,33 @@ class ShadowingApp:
             print(f"[App] Vosk model ready: {model_path}")
         else:
             self.set_status(
-                "WARNING: Vosk model not found — download and extract to project root\n"
-                "URL: https://alphacephei.com/vosk/models"
+                "WARNING: Vosk model not found — click [DOWNLOAD MODEL] to auto-download"
             )
             print("[App] Vosk model NOT found")
+            self.root.after(500, self._prompt_model_download)
+
+    def _prompt_model_download(self):
+        from src.gui.panels.download_dialog import ModelDownloadDialog
+        dialog = ModelDownloadDialog(
+            self.root,
+            extract_dir=os.path.dirname(
+                os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+            ),
+        )
+        self.wait_window(dialog)
+        if dialog.result:
+            self.set_status("MODEL DOWNLOADED — LOADING...")
+            self.root.update()
+            self.speech_recognizer = SpeechRecognizer(sample_rate=16000)
+            self._model_ready = self.speech_recognizer.initialize()
+            if self._model_ready:
+                model_path = self.speech_recognizer._model_path
+                model_name = os.path.basename(model_path) if model_path else "en-us"
+                self.set_status(f"SPEECH MODEL READY — {model_name}")
+                print(f"[App] Vosk model loaded after download: {model_path}")
+            else:
+                self.set_status("ERROR: Model downloaded but failed to load. Check console.")
+                print("[App] Model download completed but init failed")
 
     def _on_text_changed(self):
         self._ref_audio_path = None
