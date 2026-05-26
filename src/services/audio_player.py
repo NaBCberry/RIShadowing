@@ -11,7 +11,7 @@ class AudioPlayer:
         self._sample_rate = None
         self._is_playing = False
         self._position = 0.0
-        self._start_time = 0.0
+        self._last_update_time = 0.0
         self._lock = threading.Lock()
         self._stream = None
         self._device = device
@@ -42,7 +42,7 @@ class AudioPlayer:
         with self._lock:
             if not self._is_playing:
                 return self._position
-            return self._position + (time.time() - self._start_time)
+            return self._position + (time.time() - self._last_update_time)
 
     @staticmethod
     def list_devices():
@@ -64,7 +64,7 @@ class AudioPlayer:
 
         self._is_playing = True
         self._position = 0.0
-        self._start_time = time.time()
+        self._last_update_time = time.time()
 
         def _play_thread():
             try:
@@ -90,6 +90,7 @@ class AudioPlayer:
                     pos = end
                     with self._lock:
                         self._position = pos / self._sample_rate
+                        self._last_update_time = time.time()
 
                 if self._stream is stream:
                     self._stream = None

@@ -32,23 +32,81 @@ class ShadowComparator:
     def set_word_timings(self, asr_words: list):
         if not asr_words or not self._ref_words:
             return
+
+        asr_word_texts = [w.get("word", "").lower() for w in asr_words]
+        sm = difflib.SequenceMatcher(
+            None, [w.lower() for w in self._ref_words], asr_word_texts
+        )
+        alignment = sm.get_opcodes()
+
         self._word_timings = []
-        for i, (ref_word, asr_w) in enumerate(zip(self._ref_words, asr_words)):
-            self._word_timings.append({
-                "word": ref_word,
-                "start": asr_w.get("start", 0.0),
-                "end": asr_w.get("end", 0.0),
-                "ref_index": i,
-            })
-        if len(asr_words) > len(self._ref_words):
-            for i in range(len(self._ref_words), len(asr_words)):
-                self._word_timings.append({
-                    "word": asr_words[i].get("word", ""),
-                    "start": asr_words[i].get("start", 0.0),
-                    "end": asr_words[i].get("end", 0.0),
-                    "ref_index": i,
-                })
-        print(f"[Comparator] using {len(self._word_timings)} real word timestamps")
+        for tag, i1, i2, j1, j2 in alignment:
+            if tag == "equal":
+                for k in range(i2 - i1):
+                    ref_idx = i1 + k
+                    asr_idx = j1 + k
+                    self._word_timings.append({
+                        "word": self._ref_words[ref_idx],
+                        "start": asr_words[asr_idx].get("start", 0.0),
+                        "end": asr_words[asr_idx].get("end", 0.0),
+                        "ref_index": ref_idx,
+                    })
+            elif tag == "replace":
+                for k in range(min(i2 - i1, j2 - j1)):
+                    ref_idx = i1 + k
+                    asr_idx = j1 + k
+                    self._word_timings.append({
+                        "word": self._ref_words[ref_idx],
+                        "start": asr_words[asr_idx].get("start", 0.0),
+                        "end": asr_words[asr_idx].get("end", 0.0),
+                        "ref_index": ref_idx,
+                    })
+                for k in range(min(i2 - i1, j2 - j1), i2 - i1):
+                    ref_idx = i1 + k
+                    self._word_timings.append({
+                        "word": self._ref_words[ref_idx],
+                        "start": 0.0, "end": 0.0,
+                        "ref_index": ref_idx,
+                    })
+            elif tag == "delete":
+                for k in range(i1, i2):
+                    self._word_timings.append({
+                        "word": self._ref_words[k],
+                        "start": 0.0, "end": 0.0,
+                        "ref_index": k,
+                    })
+
+        if not self._word_timings:
+            return
+
+        for i in range(len(self._word_timings)):
+            if self._word_timings[i]["end"] <= 0:
+                if i > 0 and self._word_timings[i - 1]["end"] > 0:
+                    prev_end = self._word_timings[i - 1]["end"]
+                    next_start = prev_end + 999
+                    for j in range(i, len(self._word_timings)):
+                        if self._word_timings[j]["end"] > 0:
+                            next_start = self._word_timings[j]["start"]
+                            break
+                    gap = next_start - prev_end
+                    n_missing = sum(
+                        1 for j in range(i, len(self._word_timings))
+                        if self._word_timings[j]["end"] <= 0 and self._word_timings[j]["start"] < prev_end + 1
+                    )
+                    n_missing = max(n_missing, 1)
+                    slot = gap / n_missing
+                    missing_idx = 0
+                    for j in range(i, len(self._word_timings)):
+                        if self._word_timings[j]["end"] <= 0:
+                            t = prev_end + missing_idx * slot
+                            self._word_timings[j]["start"] = t
+                            self._word_timings[j]["end"] = t + slot
+                            missing_idx += 1
+                            if self._word_timings[j]["start"] >= next_start - 0.01:
+                                break
+                    break
+
+        print(f"[Comparator] aligned {len(self._word_timings)} words via SequenceMatcher")
 
     @property
     def reference_words(self) -> List[str]:

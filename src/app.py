@@ -521,6 +521,9 @@ class ShadowingApp:
             self.comparator.set_word_timings(self._asr_words)
         else:
             self.comparator.set_estimated_timings(self.audio_player.duration)
+            self.set_training_status(
+                "WARNING: Using estimated word timestamps — accuracy may be reduced"
+            )
 
         self.display_panel.init_ref_display(self.comparator.reference_words)
 
@@ -558,7 +561,7 @@ class ShadowingApp:
             self.root.after(0, self._on_practice_finished)
 
         self.audio_player.play(on_finished=on_audio_finished)
-        self.root.after(300, self._update_loop)
+        self.root.after(50, self._update_loop)
 
     def _on_training_action(self):
         if self._awaiting_return:
@@ -676,7 +679,7 @@ class ShadowingApp:
             self.display_panel.update_detail(recognized_words, accuracy_result)
 
         self.display_panel.update_ref_highlight()
-        self.root.after(200, self._update_loop)
+        self.root.after(100, self._update_loop)
 
     def _on_practice_finished(self):
         if not self._is_running:

@@ -75,10 +75,10 @@
 
 | 文件 | 职责 |
 |------|------|
-| `src/services/audio_player.py` | 参考音频播放：`sounddevice.OutputStream` 分块播放，支持设备选择与回调 |
+| `src/services/audio_player.py` | 参考音频播放：`sounddevice.OutputStream` 分块播放，支持设备选择与回调。`position` 使用 `_last_update_time` 增量法避免 2x 速 bug |
 | `src/services/audio_recorder.py` | 麦克风采集：`InputStream` 回调 → `queue.Queue`，实时 RMS 电平 |
 | `src/services/speech_recognizer.py` | Vosk 实时语音识别：后台线程消费音频队列，逐词输出（word/start/end/conf） |
-| `src/services/comparator.py` | 跟读对比引擎：分词 + 语速比对（绿/黄/红）+ 准确率（`difflib.SequenceMatcher`） |
+| `src/services/comparator.py` | 跟读对比引擎：`SequenceMatcher` 逐词对齐 Vosk 转写与参考文本（处理词数不一致），语速比对（绿/黄/红），准确率（`difflib.SequenceMatcher`） |
 | `src/services/asr/__init__.py` | ASR 工厂：`create_asr_engine("vosk"\|"whisper")` |
 | `src/services/asr/base.py` | ASR 抽象基类 `BaseASREngine` |
 | `src/services/asr/vosk_asr.py` | 离线 Vosk 音频文件转写，支持重采样到 16kHz |
