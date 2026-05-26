@@ -1,7 +1,8 @@
 # 影子跟读训练软件 — 项目概览
 
 > AI 驱动的英语影子跟读（Shadowing）桌面训练工具  
-> 当前版本：**v1.2** | 平台：Windows（可跨平台）
+> 当前版本：**v1.2** | 平台：Windows（可跨平台）  
+> UI 主题：**明日方舟（Arknights）暗色科幻工业风**
 
 ---
 
@@ -22,7 +23,7 @@
 
 | 层级 | 技术 | 说明 |
 |------|------|------|
-| **UI** | `customtkinter` + `tkinter` | 现代深色主题桌面 GUI |
+| **UI** | `customtkinter` + `tkinter` | 明日方舟风格暗色科幻 GUI，六边形装饰 + 青橙双色点缀 |
 | **音频 I/O** | `sounddevice` / `soundfile` | 录音与播放 |
 | **语音识别（实时）** | `vosk` | 离线实时 STT，Kaldi 内核 |
 | **语音识别（精密）** | OpenAI Whisper API (`openai`) | 在线高精度转写+逐词时间戳 |
@@ -91,7 +92,7 @@
 
 | 文件 | 职责 |
 |------|------|
-| `src/gui/styles.py` | 主题常量：Dracula 暗色调色板（`C` 字典）+ 字体 `Microsoft YaHei` |
+| `src/gui/styles.py` | 主题常量：明日方舟暗色调色板 + 六边形/边框装饰工具函数（`draw_hex_indicator`, `draw_panel_border`） |
 | `src/gui/panels/device_panel.py` | 设备选择 + 画布实时电平表（绿/黄/红） |
 | `src/gui/panels/input_panel.py` | 文本输入区 + TTS 引擎选择 + 文件加载 + Whisper 精密转写按钮 |
 | `src/gui/panels/control_panel.py` | 双模式主按钮（"生成语音" / "开始跟读"）+ 停止按钮 + 状态标签 |
@@ -189,13 +190,13 @@ main.py ──► ShadowingApp (src/app.py)
 - **懒加载导入**：外部依赖在函数内部 `import`，避免循环引用和可选依赖问题
 - **Print 日志**：全项目使用 `[ModuleName]` 前缀的 `print()` 日志
 - **优雅降级**：所有外部依赖包裹 `try/except`，失败时有中文提示
-- **中英双语**：代码标识符用英文，UI 文本用中文
+- **中英双语**：代码标识符用英文，UI 文本为 Arknights 风格英文大写（原为中文）
 
 ---
 
 ## 当前功能清单
 
-- [x] 自定义 Tkinter 深色主题 UI（Dracula 风格）
+- [x] 自定义 Tkinter 明日方舟风格 UI（暗色科幻工业风 + 六边形装饰 + 青橙双色点缀）
 - [x] 文本输入 + 文件加载（TXT / 粘贴）
 - [x] 三引擎 TTS 合成参考语音（Edge 在线 + Piper 离线 + pyttsx3 离线）
 - [x] 在线/离线音频转写打轴（Vosk 离线 + Whisper API 在线）

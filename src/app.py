@@ -11,7 +11,7 @@ from src.services.speech_recognizer import SpeechRecognizer
 from src.services.comparator import ShadowComparator
 from src.services.tts import create_tts_engine
 from src.services.asr import create_asr_engine
-from src.gui.styles import C, FONT_FAMILY
+from src.gui.styles import C, FONT_FAMILY, draw_hex_indicator, draw_panel_border
 from src.gui.panels.device_panel import DevicePanel
 from src.gui.panels.input_panel import InputPanel
 from src.gui.panels.control_panel import ControlPanel
@@ -27,9 +27,9 @@ ctk.set_default_color_theme("blue")
 class ShadowingApp:
     def __init__(self):
         self.root = ctk.CTk()
-        self.root.title("影子跟读训练 Shadowing Practice")
-        self.root.geometry("1100x800")
-        self.root.minsize(900, 650)
+        self.root.title("R.I. Shadowing Practice")
+        self.root.geometry("1140x820")
+        self.root.minsize(960, 680)
         self.root.configure(fg_color=C["bg_dark"])
 
         self.audio_player = AudioPlayer()
@@ -52,60 +52,102 @@ class ShadowingApp:
         self._check_speech_model()
         self.device_panel.scan_devices()
 
-        print("=" * 50)
-        print(" 影子跟读训练 Shadowing Practice v1.2")
-        print("=" * 50)
+        print("=" * 54)
+        print("  R.I. Shadowing Practice v1.2 — Arknights UI")
+        print("=" * 54)
 
         self.root.protocol("WM_DELETE_WINDOW", self._on_close)
 
     def _build_ui(self):
+        self._build_title_bar()
+
         main = ctk.CTkFrame(self.root, fg_color="transparent")
-        main.pack(fill=tk.BOTH, expand=True, padx=12, pady=8)
-
-        header = ctk.CTkFrame(main, fg_color="transparent")
-        header.pack(fill=tk.X, pady=(0, 6))
-
-        ctk.CTkLabel(
-            header, text="🎤 影子跟读训练",
-            font=(FONT_FAMILY, 16, "bold"),
-            text_color=C["accent"],
-        ).pack(side=tk.LEFT)
-
-        ctk.CTkLabel(
-            header, text="Shadowing Practice — 听原音 · 跟读 · 实时反馈",
-            font=(FONT_FAMILY, 9),
-            text_color=C["fg_secondary"],
-        ).pack(side=tk.LEFT, padx=(16, 0))
+        main.pack(fill=tk.BOTH, expand=True, padx=14, pady=(0, 10))
 
         self.device_panel = DevicePanel(main, self)
-        self.device_panel.pack(fill=tk.X, pady=(0, 6))
+        self.device_panel.pack(fill=tk.X, pady=(0, 8))
 
         self.input_panel = InputPanel(main, self)
-        self.input_panel.pack(fill=tk.X, pady=(0, 6))
+        self.input_panel.pack(fill=tk.X, pady=(0, 8))
 
         self.material_panel = MaterialPanel(main, self)
-        self.material_panel.pack(fill=tk.X, pady=(0, 6))
+        self.material_panel.pack(fill=tk.X, pady=(0, 8))
 
         self.control_panel = ControlPanel(main, self)
-        self.control_panel.pack(fill=tk.X, pady=(0, 6))
+        self.control_panel.pack(fill=tk.X, pady=(0, 8))
 
         self.feedback_panel = FeedbackPanel(main, self)
-        self.feedback_panel.pack(fill=tk.X, pady=(0, 6))
+        self.feedback_panel.pack(fill=tk.X, pady=(0, 8))
 
         self.display_panel = DisplayPanel(main, self)
         self.display_panel.pack(fill=tk.BOTH, expand=True)
+
+    def _build_title_bar(self):
+        title_bar = tk.Frame(
+            self.root, bg=C["bg_dark"], height=48,
+            highlightthickness=0,
+        )
+        title_bar.pack(fill=tk.X, padx=0, pady=0)
+        title_bar.pack_propagate(False)
+
+        border_canvas = tk.Canvas(
+            title_bar, height=48, bg=C["bg_dark"],
+            highlightthickness=0,
+        )
+        border_canvas.pack(fill=tk.BOTH)
+
+        border_canvas.create_line(
+            0, 46, 9999, 46, fill=C["orange_dim"], width=1
+        )
+        border_canvas.create_line(
+            0, 47, 9999, 47, fill=C["cyan_dim"], width=1
+        )
+
+        draw_hex_indicator(border_canvas, 24, 24, size=10, color=C["cyan"])
+        draw_hex_indicator(border_canvas, 24, 24, size=5, color=C["cyan"])
+
+        border_canvas.create_text(
+            46, 22, anchor=tk.W,
+            text="R.I. SHADOWING PRACTICE",
+            font=(FONT_FAMILY, 15, "bold"),
+            fill=C["fg_primary"],
+        )
+        border_canvas.create_text(
+            46, 36, anchor=tk.W,
+            text="听原音 · 跟读 · 实时反馈  |  RHODES ISLAND COMMAND SYSTEM v1.2",
+            font=(FONT_FAMILY, 8),
+            fill=C["fg_secondary"],
+        )
+
+        decor_x = 1100
+        border_canvas.create_line(
+            decor_x, 10, decor_x + 20, 10, fill=C["cyan_dim"], width=1
+        )
+        border_canvas.create_line(
+            decor_x, 36, decor_x + 20, 36, fill=C["orange_dim"], width=1
+        )
+
+        corner = 1130
+        border_canvas.create_line(
+            corner, 14, corner, 6, corner, 6, corner + 14, 6,
+            fill=C["cyan_dim"], width=1,
+        )
+        border_canvas.create_line(
+            corner, 34, corner, 42, corner, 42, corner + 14, 42,
+            fill=C["orange_dim"], width=1,
+        )
 
     def _check_speech_model(self):
         self._model_ready = self.speech_recognizer.initialize()
         if self._model_ready:
             model_path = self.speech_recognizer._model_path
             model_name = os.path.basename(model_path) if model_path else "en-us"
-            self.control_panel.set_status(f"✅ 语音模型已就绪 — {model_name}")
+            self.control_panel.set_status(f"SPEECH MODEL READY — {model_name}")
             print(f"[App] Vosk model ready: {model_path}")
         else:
             self.control_panel.set_status(
-                "⚠ 未找到Vosk语音模型 — 请下载模型并解压到项目根目录\n"
-                "下载地址: https://alphacephei.com/vosk/models"
+                "WARNING: Vosk model not found — download and extract to project root\n"
+                "URL: https://alphacephei.com/vosk/models"
             )
             print("[App] Vosk model NOT found")
 
@@ -113,7 +155,7 @@ class ShadowingApp:
         self._ref_audio_path = None
         self._asr_words = []
         self.control_panel.set_mode("generate")
-        self.control_panel.set_status("📝 文本已修改 — 点击「生成语音」")
+        self.control_panel.set_status("TEXT MODIFIED — CLICK [GENERATE AUDIO]")
 
     def _on_audio_loaded(self, audio_path: str):
         self._asr_words = []
@@ -121,7 +163,7 @@ class ShadowingApp:
 
     def _transcribe_with_vosk(self, audio_path: str):
         try:
-            self.control_panel.set_status("⏳ Vosk 离线转写中...")
+            self.control_panel.set_status("TRANSCRIBING VIA VOSK...")
             self.root.update()
             engine = create_asr_engine("vosk")
             result = engine.transcribe(audio_path)
@@ -131,30 +173,30 @@ class ShadowingApp:
                 self.input_panel.set_text(text)
                 self._asr_words = words
                 self.control_panel.set_status(
-                    f"✅ Vosk 离线转写完成 — {len(words)} 词"
+                    f"VOSK TRANSCRIPTION COMPLETE — {len(words)} WORDS"
                 )
                 print(f"[App] Vosk transcription: {len(words)} words")
             else:
                 self.control_panel.set_status(
-                    "⚠ Vosk 未识别到语音，请手动输入参考文本"
+                    "WARNING: No speech detected — please enter reference text manually"
                 )
         except Exception as e:
             print(f"[App] Vosk transcription error: {e}")
-            self.control_panel.set_status("⚠ 离线转写失败，请手动输入参考文本")
+            self.control_panel.set_status("WARNING: Offline transcription failed")
 
     def _transcribe_with_whisper(self):
         if not self._ref_audio_path:
             return
         try:
-            self.control_panel.set_status("⏳ Whisper API 精准转写中...")
+            self.control_panel.set_status("WHISPER API TRANSCRIBING...")
             self.root.update()
             from src.utils.config import get_env
             env = get_env()
             api_key = env.get("WHISPER_API_KEY")
             if not api_key:
                 messagebox.showwarning(
-                    "缺少配置",
-                    "请在 .env 文件中填入 WHISPER_API_KEY\n获取方式见 README.md"
+                    "CONFIG REQUIRED",
+                    "Set WHISPER_API_KEY in .env file"
                 )
                 return
             engine = create_asr_engine("whisper", api_key=api_key)
@@ -165,15 +207,15 @@ class ShadowingApp:
                 self.input_panel.set_text(text)
                 self._asr_words = words
                 self.control_panel.set_status(
-                    f"✅ Whisper 精准转写完成 — {len(words)} 词 (含词级时间戳)"
+                    f"WHISPER TRANSCRIPTION COMPLETE — {len(words)} WORDS WITH TIMESTAMPS"
                 )
                 print(f"[App] Whisper transcription: {len(words)} words with timestamps")
         except Exception as e:
-            messagebox.showerror("Whisper 转写失败", str(e))
+            messagebox.showerror("WHISPER TRANSCRIPTION FAILED", str(e))
 
     def _generate_tts_audio(self, text: str) -> str:
         engine_key = self.input_panel.get_selected_tts_engine()
-        self.control_panel.set_status(f"⏳ 正在用 {engine_key} 合成参考语音...")
+        self.control_panel.set_status(f"SYNTHESIZING VIA {engine_key.upper()}...")
         self.root.update()
 
         try:
@@ -182,21 +224,21 @@ class ShadowingApp:
             engine.synthesize(text, tmp_path)
             return tmp_path
         except Exception as e:
-            messagebox.showerror("TTS错误", f"语音合成失败:\n{e}")
+            messagebox.showerror("TTS ERROR", f"Speech synthesis failed:\n{e}")
             return None
 
     def _generate_and_prepare(self):
         ref_text = self.input_panel.get_text()
         if not ref_text:
-            messagebox.showwarning("缺少输入", "请输入参考文本")
+            messagebox.showwarning("INPUT REQUIRED", "Please enter reference text")
             return
 
         if not self._model_ready:
             messagebox.showwarning(
-                "语音模型未就绪",
-                "请先下载Vosk语音识别模型:\n"
+                "SPEECH MODEL NOT READY",
+                "Download Vosk speech recognition model:\n"
                 "https://alphacephei.com/vosk/models\n\n"
-                "推荐: vosk-model-small-en-us-0.15 (~40MB)",
+                "Recommended: vosk-model-small-en-us-0.15 (~40MB)",
             )
             return
 
@@ -214,11 +256,11 @@ class ShadowingApp:
         try:
             self.audio_player.load_file(audio_path)
         except Exception as e:
-            messagebox.showerror("音频加载失败", str(e))
+            messagebox.showerror("AUDIO LOAD FAILED", str(e))
             self.control_panel.set_mode("generate")
             return
 
-        self.control_panel.set_status("⏳ 正在分析语音时间轴...")
+        self.control_panel.set_status("ANALYZING AUDIO TIMELINE...")
         self.root.update()
         try:
             engine = create_asr_engine("vosk")
@@ -231,18 +273,18 @@ class ShadowingApp:
 
         self.control_panel.set_mode("shadowing")
         self.control_panel.set_status(
-            f"✅ 语音已就绪 — 时长: {self.audio_player.duration:.1f}秒 | 点击「开始跟读」"
+            f"AUDIO READY — DURATION: {self.audio_player.duration:.1f}s | CLICK [START SHADOWING]"
         )
 
     def _start_shadowing(self):
         ref_text = self.input_panel.get_text()
         if not ref_text:
-            messagebox.showwarning("缺少输入", "请输入参考文本")
+            messagebox.showwarning("INPUT REQUIRED", "Please enter reference text")
             return
 
         if not self._ref_audio_path:
             self.control_panel.set_mode("generate")
-            self.control_panel.set_status("⚠ 请先点击「生成语音」")
+            self.control_panel.set_status("WARNING: Click [GENERATE AUDIO] first")
             return
 
         try:
@@ -288,7 +330,7 @@ class ShadowingApp:
 
         self.audio_player.play(on_finished=on_audio_finished)
 
-        self.control_panel.set_status("🔴 训练中 — 请跟随音频大声跟读...")
+        self.control_panel.set_status("TRAINING IN PROGRESS — FOLLOW THE AUDIO...")
         self.root.after(300, self._update_loop)
 
     def _stop_shadowing(self):
@@ -298,7 +340,7 @@ class ShadowingApp:
         self.speech_recognizer.stop()
         self.control_panel.set_button_states(False)
         self.device_panel.set_state(True)
-        self.control_panel.set_status("⏹ 已停止")
+        self.control_panel.set_status("TERMINATED")
         print("[App] shadowing stopped by user")
 
     def _update_loop(self):
@@ -347,10 +389,10 @@ class ShadowingApp:
             print(f"  [{w['word']}] conf={w['conf']:.2f}")
 
         self.control_panel.set_status(
-            f"✅ 训练完成! 整体准确度: {score:.0%} | "
-            f"🟢{accuracy_result.get('green_count', 0)} "
-            f"🟡{accuracy_result.get('yellow_count', 0)} "
-            f"🔴{accuracy_result.get('red_count', 0)}"
+            f"TRAINING COMPLETE! ACCURACY: {score:.0%} | "
+            f"G:{accuracy_result.get('green_count', 0)} "
+            f"Y:{accuracy_result.get('yellow_count', 0)} "
+            f"R:{accuracy_result.get('red_count', 0)}"
         )
 
         review_words = [w for w in recognized_words if w.get("conf", 1.0) < 0.7]

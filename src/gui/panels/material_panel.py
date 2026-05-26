@@ -3,7 +3,7 @@ import tkinter as tk
 import os
 from tkinter import messagebox, filedialog
 from typing import Optional
-from src.gui.styles import C, FONT_FAMILY
+from src.gui.styles import C, FONT_FAMILY, draw_hex_indicator
 from src.models.material import (
     Material, init_db, list_materials, add_material,
     update_material, delete_material, get_material, get_all_topics,
@@ -12,7 +12,7 @@ from src.models.material import (
 
 class MaterialPanel(ctk.CTkFrame):
     def __init__(self, parent, app):
-        super().__init__(parent, fg_color=C["bg_panel"], corner_radius=8)
+        super().__init__(parent, fg_color=C["bg_panel"], corner_radius=0)
         self.app = app
         self._materials = []
         self._current_material = None
@@ -20,18 +20,31 @@ class MaterialPanel(ctk.CTkFrame):
         self._build()
 
     def _build(self):
+        top_bar = tk.Canvas(
+            self, height=2, bg=C["bg_panel"], highlightthickness=0,
+        )
+        top_bar.pack(fill=tk.X)
+        top_bar.create_line(0, 0, 9999, 0, fill=C["orange_dim"], width=1)
+
         self._header = ctk.CTkFrame(self, fg_color="transparent")
-        self._header.pack(fill=tk.X, padx=10, pady=(8, 4))
+        self._header.pack(fill=tk.X, padx=12, pady=(10, 4))
+
+        hex_cvs = tk.Canvas(
+            self._header, width=18, height=18,
+            bg=C["bg_panel"], highlightthickness=0,
+        )
+        hex_cvs.pack(side=tk.LEFT)
+        draw_hex_indicator(hex_cvs, 9, 9, size=6, color=C["gold"], filled=False)
 
         self._toggle_btn = ctk.CTkButton(
-            self._header, text="📚 材料库 ▸",
+            self._header, text="MATERIAL LIBRARY  ▸",
             font=(FONT_FAMILY, 10, "bold"),
-            fg_color="transparent", hover_color=C["button_bg"],
+            fg_color="transparent", hover_color=C["bg_hover"],
             text_color=C["fg_secondary"],
             anchor="w",
             command=self._toggle,
         )
-        self._toggle_btn.pack(side=tk.LEFT, fill=tk.X)
+        self._toggle_btn.pack(side=tk.LEFT, fill=tk.X, padx=(4, 0))
 
         self._body = ctk.CTkFrame(self, fg_color="transparent")
 
@@ -39,19 +52,19 @@ class MaterialPanel(ctk.CTkFrame):
         self._collapsed = not self._collapsed
         if self._collapsed:
             self._body.pack_forget()
-            self._toggle_btn.configure(text="📚 材料库 ▸")
+            self._toggle_btn.configure(text="MATERIAL LIBRARY  ▸")
         else:
-            self._body.pack(fill=tk.X, padx=10, pady=(0, 6),
+            self._body.pack(fill=tk.X, padx=12, pady=(0, 8),
                             after=self._header)
             self._refresh_body()
-            self._toggle_btn.configure(text="📚 材料库 ▾")
+            self._toggle_btn.configure(text="MATERIAL LIBRARY  ▾")
 
     def _refresh_body(self):
         for w in self._body.winfo_children():
             w.destroy()
 
         toolbar = ctk.CTkFrame(self._body, fg_color="transparent")
-        toolbar.pack(fill=tk.X, pady=(0, 4))
+        toolbar.pack(fill=tk.X, pady=(0, 6))
 
         self.search_var = tk.StringVar()
         self.search_var.trace("w", lambda *a: self._refresh_body())
@@ -59,26 +72,39 @@ class MaterialPanel(ctk.CTkFrame):
         ctk.CTkEntry(
             toolbar,
             textvariable=self.search_var,
-            placeholder_text="搜索...",
+            placeholder_text="SEARCH...",
             font=(FONT_FAMILY, 9),
             fg_color=C["bg_input"],
             text_color=C["fg_primary"],
-            width=120, height=26,
+            border_width=1,
+            border_color=C["fg_dim"],
+            corner_radius=2,
+            width=130, height=28,
         ).pack(side=tk.LEFT, padx=(0, 6))
 
         ctk.CTkButton(
-            toolbar, text="➕ 添加",
-            font=(FONT_FAMILY, 9),
-            fg_color=C["button_bg"], hover_color=C["accent"],
-            text_color=C["button_fg"], width=60, height=26,
+            toolbar, text="ADD",
+            font=(FONT_FAMILY, 9, "bold"),
+            fg_color=C["button_secondary"],
+            hover_color=C["bg_hover"],
+            text_color=C["fg_primary"],
+            border_width=1,
+            border_color=C["cyan_dim"],
+            corner_radius=2,
+            width=60, height=28,
             command=self._add_material,
         ).pack(side=tk.RIGHT, padx=(4, 0))
 
         ctk.CTkButton(
-            toolbar, text="🗑 删除",
-            font=(FONT_FAMILY, 9),
-            fg_color=C["button_stop"], hover_color="#ee4545",
-            text_color="#1e1e2e", width=60, height=26,
+            toolbar, text="DEL",
+            font=(FONT_FAMILY, 9, "bold"),
+            fg_color=C["button_stop"],
+            hover_color=C["button_stop_hover"],
+            text_color=C["fg_primary"],
+            border_width=1,
+            border_color=C["red_dim"],
+            corner_radius=2,
+            width=50, height=28,
             command=self._delete_material,
         ).pack(side=tk.RIGHT, padx=(4, 0))
 
@@ -88,17 +114,18 @@ class MaterialPanel(ctk.CTkFrame):
         list_frame = ctk.CTkScrollableFrame(
             self._body,
             fg_color=C["bg_input"],
-            height=100,
+            height=110,
+            corner_radius=2,
         )
         list_frame.pack(fill=tk.X, pady=(0, 2))
 
         if not self._materials:
             ctk.CTkLabel(
                 list_frame,
-                text="暂无材料，点击「➕ 添加」导入文本或音频",
+                text="LIBRARY EMPTY — CLICK [ADD] TO IMPORT MATERIALS",
                 font=(FONT_FAMILY, 9),
-                text_color=C["fg_secondary"],
-            ).pack(pady=10)
+                text_color=C["fg_dim"],
+            ).pack(pady=14)
             return
 
         for m in self._materials:
@@ -110,17 +137,18 @@ class MaterialPanel(ctk.CTkFrame):
                 label_text += f"  [{m.topic}]"
             if m.duration > 0:
                 label_text += f"  {m.duration:.0f}s"
-            label_text += f"  | {m.practice_count}次"
+            label_text += f"  | {m.practice_count} runs"
             if m.best_score > 0:
-                label_text += f"  | {m.best_score:.0%}"
+                label_text += f"  | BEST {m.best_score:.0%}"
 
             ctk.CTkButton(
                 row, text=label_text,
                 font=(FONT_FAMILY, 9),
-                fg_color=C["bg_panel"],
-                hover_color=C["button_bg"],
+                fg_color=C["bg_card"],
+                hover_color=C["bg_hover"],
                 text_color=C["fg_primary"],
                 anchor="w",
+                corner_radius=2,
                 command=lambda mid=m.id: self._select_material(mid),
             ).pack(fill=tk.X)
 
@@ -139,7 +167,7 @@ class MaterialPanel(ctk.CTkFrame):
             try:
                 self.app.audio_player.load_file(material.audio_path)
                 self.app.control_panel.set_status(
-                    f"✅ 已加载: {material.title} — 时长: {material.duration:.1f}秒"
+                    f"LOADED: {material.title} — DURATION: {material.duration:.1f}s"
                 )
                 self.app._on_audio_loaded(material.audio_path)
             except Exception as e:
@@ -147,12 +175,12 @@ class MaterialPanel(ctk.CTkFrame):
         else:
             self.app._ref_audio_path = None
             self.app.control_panel.set_status(
-                f"✅ 已选择: {material.title}（未关联音频，将用TTS生成）"
+                f"SELECTED: {material.title} (NO AUDIO — WILL USE TTS)"
             )
         print(f"[MaterialPanel] selected: {material.title}")
 
     def _add_material(self):
-        dialog = MaterialDialog(self, title="添加材料")
+        dialog = MaterialDialog(self, title="ADD MATERIAL")
         self.wait_window(dialog)
         if dialog.result:
             try:
@@ -160,13 +188,13 @@ class MaterialPanel(ctk.CTkFrame):
                 print(f"[MaterialPanel] added material id={mid}")
                 self._refresh()
             except Exception as e:
-                messagebox.showerror("添加失败", str(e))
+                messagebox.showerror("ADD FAILED", str(e))
 
     def _delete_material(self):
         if not self._current_material:
-            messagebox.showinfo("提示", "请先选择要删除的材料")
+            messagebox.showinfo("INFO", "SELECT A MATERIAL FIRST")
             return
-        if messagebox.askyesno("确认", f'删除材料 "{self._current_material.title}"？'):
+        if messagebox.askyesno("CONFIRM", f'DELETE "{self._current_material.title}"?'):
             delete_material(self._current_material.id)
             self._current_material = None
             self._refresh()
@@ -177,10 +205,10 @@ class MaterialPanel(ctk.CTkFrame):
 
 
 class MaterialDialog(ctk.CTkToplevel):
-    def __init__(self, parent, title="编辑材料"):
+    def __init__(self, parent, title="EDIT MATERIAL"):
         super().__init__(parent)
         self.title(title)
-        self.geometry("450x380")
+        self.geometry("460x400")
         self.resizable(False, False)
         self.result = None
         self.configure(fg_color=C["bg_dark"])
@@ -189,83 +217,131 @@ class MaterialDialog(ctk.CTkToplevel):
         self.grab_set()
 
     def _build(self):
+        header_frame = tk.Frame(self, bg=C["bg_dark"], height=36)
+        header_frame.pack(fill=tk.X)
+        header_frame.pack_propagate(False)
+
+        border_cvs = tk.Canvas(
+            header_frame, height=36, bg=C["bg_dark"],
+            highlightthickness=0,
+        )
+        border_cvs.pack(fill=tk.BOTH)
+        border_cvs.create_line(0, 34, 9999, 34, fill=C["orange_dim"], width=1)
+
+        cvs_h = tk.Canvas(
+            header_frame, width=16, height=36,
+            bg=C["bg_dark"], highlightthickness=0,
+        )
+        cvs_h.place(x=10, y=0)
+        draw_hex_indicator(cvs_h, 8, 18, size=6, color=C["gold"], filled=False)
+
+        tk.Label(
+            header_frame, text="MATERIAL DATA",
+            font=(FONT_FAMILY, 11, "bold"),
+            bg=C["bg_dark"], fg=C["fg_primary"],
+        ).place(x=28, y=8)
+
+        body = ctk.CTkFrame(self, fg_color="transparent")
+        body.pack(fill=tk.BOTH, expand=True, padx=16, pady=(8, 0))
+
         fields = [
-            ("标题:", "title"),
-            ("话题:", "topic"),
-            ("难度:", "difficulty"),
+            ("TITLE:", "title"),
+            ("TOPIC:", "topic"),
+            ("DIFFICULTY:", "difficulty"),
         ]
         self._entries = {}
         for label, key in fields:
-            row = ctk.CTkFrame(self, fg_color="transparent")
-            row.pack(fill=tk.X, padx=16, pady=(8, 0))
+            row = ctk.CTkFrame(body, fg_color="transparent")
+            row.pack(fill=tk.X, pady=(6, 0))
             ctk.CTkLabel(
                 row, text=label,
-                font=(FONT_FAMILY, 10),
-                text_color=C["fg_primary"],
-                width=60,
+                font=(FONT_FAMILY, 10, "bold"),
+                text_color=C["fg_secondary"],
+                width=80,
             ).pack(side=tk.LEFT)
             entry = ctk.CTkEntry(
                 row,
                 font=(FONT_FAMILY, 10),
                 fg_color=C["bg_input"],
                 text_color=C["fg_primary"],
+                border_width=1,
+                border_color=C["fg_dim"],
+                corner_radius=2,
             )
             entry.pack(side=tk.LEFT, fill=tk.X, expand=True)
             self._entries[key] = entry
 
-        text_label = ctk.CTkFrame(self, fg_color="transparent")
-        text_label.pack(fill=tk.X, padx=16, pady=(8, 0))
+        text_label = ctk.CTkFrame(body, fg_color="transparent")
+        text_label.pack(fill=tk.X, pady=(8, 0))
         ctk.CTkLabel(
-            text_label, text="参考文本:",
-            font=(FONT_FAMILY, 10),
-            text_color=C["fg_primary"],
+            text_label, text="TEXT:",
+            font=(FONT_FAMILY, 10, "bold"),
+            text_color=C["fg_secondary"],
         ).pack(side=tk.LEFT)
 
         self._entries["text"] = ctk.CTkTextbox(
-            self, height=80,
+            body, height=80,
             font=("Consolas", 10),
             fg_color=C["bg_input"],
             text_color=C["fg_primary"],
+            border_width=1,
+            border_color=C["fg_dim"],
+            corner_radius=2,
         )
-        self._entries["text"].pack(fill=tk.X, padx=16, pady=(4, 0))
+        self._entries["text"].pack(fill=tk.X, pady=(4, 0))
 
-        audio_row = ctk.CTkFrame(self, fg_color="transparent")
-        audio_row.pack(fill=tk.X, padx=16, pady=(8, 0))
+        audio_row = ctk.CTkFrame(body, fg_color="transparent")
+        audio_row.pack(fill=tk.X, pady=(8, 0))
         self._audio_path = tk.StringVar()
         ctk.CTkButton(
-            audio_row, text="🎵 关联音频(可选)",
+            audio_row, text="LINK AUDIO",
             font=(FONT_FAMILY, 9),
-            fg_color=C["button_bg"], hover_color=C["accent"],
-            text_color=C["button_fg"], width=100, height=26,
+            fg_color=C["button_secondary"],
+            hover_color=C["bg_hover"],
+            text_color=C["fg_primary"],
+            border_width=1,
+            border_color=C["cyan_dim"],
+            corner_radius=2,
+            width=100, height=26,
             command=self._pick_audio,
         ).pack(side=tk.LEFT)
         ctk.CTkLabel(
             audio_row,
             textvariable=self._audio_path,
             font=(FONT_FAMILY, 8),
-            text_color=C["fg_secondary"],
+            text_color=C["fg_dim"],
         ).pack(side=tk.LEFT, padx=(8, 0))
 
-        btn_row = ctk.CTkFrame(self, fg_color="transparent")
-        btn_row.pack(fill=tk.X, padx=16, pady=(12, 0))
+        btn_row = ctk.CTkFrame(body, fg_color="transparent")
+        btn_row.pack(fill=tk.X, pady=(14, 0))
         ctk.CTkButton(
-            btn_row, text="保存",
+            btn_row, text="SAVE",
             font=(FONT_FAMILY, 10, "bold"),
-            fg_color=C["button_bg"], hover_color=C["accent"],
-            text_color=C["button_fg"], width=80, height=30,
+            fg_color=C["button_primary"],
+            hover_color=C["button_hover"],
+            text_color=C["button_text"],
+            border_width=1,
+            border_color=C["orange_dim"],
+            corner_radius=2,
+            width=90, height=30,
             command=self._save,
         ).pack(side=tk.RIGHT, padx=(4, 0))
         ctk.CTkButton(
-            btn_row, text="取消",
+            btn_row, text="CANCEL",
             font=(FONT_FAMILY, 10),
-            fg_color=C["gray"], hover_color=C["fg_secondary"],
-            text_color=C["button_fg"], width=80, height=30,
+            fg_color=C["button_dim"],
+            hover_color=C["bg_hover"],
+            text_color=C["fg_primary"],
+            border_width=1,
+            border_color=C["fg_dim"],
+            corner_radius=2,
+            width=90, height=30,
             command=self.destroy,
         ).pack(side=tk.RIGHT)
 
     def _pick_audio(self):
         path = filedialog.askopenfilename(
-            title="选择音频文件",
+            title="SELECT AUDIO FILE",
             filetypes=[
                 ("Audio files", "*.wav *.mp3 *.flac *.ogg"),
                 ("All files", "*.*"),
@@ -283,7 +359,7 @@ class MaterialDialog(ctk.CTkToplevel):
     def _save(self):
         title = self._entries["title"].get().strip()
         if not title:
-            messagebox.showwarning("缺少信息", "请输入标题")
+            messagebox.showwarning("REQUIRED", "TITLE IS REQUIRED")
             return
         text = self._entries["text"].get("1.0", tk.END).strip()
         duration = 0.0
