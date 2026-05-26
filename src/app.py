@@ -640,17 +640,31 @@ class ShadowingApp:
     def _finish_transition(self, status_text):
         self._show_setup()
         self.root.update_idletasks()
-        self.btn_generate.configure(
-            text="GENERATE AUDIO",
-            fg_color=C["button_primary"],
-            hover_color=C["button_hover"],
-            border_color=C["orange_dim"],
-            text_color=C["button_text"],
-            state=tk.NORMAL,
-        )
-        self.btn_start_shadowing.configure(state=tk.DISABLED)
+
+        if self._ref_audio_path and os.path.exists(self._ref_audio_path):
+            self.btn_generate.configure(
+                text="GENERATION ACCOMPLISHED!",
+                fg_color=C["green"],
+                hover_color=C["green"],
+                border_color=C["green_dim"],
+                text_color=C["button_text"],
+                state=tk.NORMAL,
+            )
+            self.btn_start_shadowing.configure(state=tk.NORMAL)
+            self.input_panel.show_lamp_green()
+        else:
+            self.btn_generate.configure(
+                text="GENERATE AUDIO",
+                fg_color=C["button_primary"],
+                hover_color=C["button_hover"],
+                border_color=C["orange_dim"],
+                text_color=C["button_text"],
+                state=tk.NORMAL,
+            )
+            self.btn_start_shadowing.configure(state=tk.DISABLED)
+            self.input_panel.show_lamp_red()
+
         self.set_status(status_text)
-        self.input_panel.show_lamp_red()
 
     def _on_close(self):
         self._is_running = False
