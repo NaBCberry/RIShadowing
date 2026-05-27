@@ -1,4 +1,3 @@
-import threading
 import time
 import sounddevice as sd
 import soundfile as sf
@@ -10,11 +9,9 @@ class AudioPlayer:
         self._audio_data = None
         self._sample_rate = None
         self._is_playing = False
-        self._position = 0.0
-        self._last_update_time = 0.0
-        self._lock = threading.Lock()
-        self._stream = None
+        self._start_time = 0.0
         self._device = device
+        self._on_finished = None
 
     def load_file(self, file_path: str):
         self._audio_data, self._sample_rate = sf.read(file_path, dtype='float32')
@@ -35,14 +32,16 @@ class AudioPlayer:
 
     @property
     def is_playing(self) -> bool:
-        return self._is_playing
+        return self._is_playing and (
+            self.position < self.duration - 0.01
+        )
 
     @property
     def position(self) -> float:
-        with self._lock:
-            if not self._is_playing:
-                return self._position
-            return self._position + (time.time() - self._last_update_time)
+        if not self._is_playing:
+            return 0.0
+        elapsed = time.time() - self._start_time
+        return min(elapsed, self.duration)
 
     @staticmethod
     def list_devices():
@@ -62,61 +61,37 @@ class AudioPlayer:
         if self._audio_data is None:
             return
 
+        sd.stop()
+        self._on_finished = on_finished
         self._is_playing = True
-        self._position = 0.0
-        self._last_update_time = time.time()
+        self._start_time = time.time()
 
-        def _play_thread():
+        kwargs = {
+            "samplerate": self._sample_rate,
+            "blocking": False,
+        }
+        if self._device is not None:
+            kwargs["device"] = self._device
+
+        sd.play(self._audio_data, **kwargs)
+
+        import threading
+        def _wait():
             try:
-                stream_kwargs = {
-                    "samplerate": self._sample_rate,
-                    "channels": self._audio_data.shape[1],
-                    "dtype": 'float32',
-                }
-                if self._device is not None:
-                    stream_kwargs["device"] = self._device
-
-                stream = sd.OutputStream(**stream_kwargs)
-                self._stream = stream
-                stream.start()
-
-                chunk_size = 1024
-                total_frames = len(self._audio_data)
-                pos = 0
-
-                while pos < total_frames and self._is_playing:
-                    end = min(pos + chunk_size, total_frames)
-                    stream.write(self._audio_data[pos:end])
-                    pos = end
-                    with self._lock:
-                        self._position = pos / self._sample_rate
-                        self._last_update_time = time.time()
-
-                if self._stream is stream:
-                    self._stream = None
-                    stream.stop()
-                    stream.close()
+                sd.wait()
             except Exception as e:
-                print(f"[AudioPlayer] error: {e}")
-            finally:
-                self._is_playing = False
-                if on_finished:
-                    on_finished()
+                print(f"[AudioPlayer] wait error: {e}")
+            self._is_playing = False
+            if self._on_finished:
+                self._on_finished()
 
-        thread = threading.Thread(target=_play_thread, daemon=True)
+        thread = threading.Thread(target=_wait, daemon=True)
         thread.start()
         print(f"[AudioPlayer] playing (device={self._device})")
 
     def stop(self):
         self._is_playing = False
-        stream = self._stream
-        self._stream = None
-        if stream:
-            try:
-                stream.abort()
-            except Exception:
-                pass
-            try:
-                stream.close()
-            except Exception:
-                pass
+        try:
+            sd.stop()
+        except Exception as e:
+            print(f"[AudioPlayer] stop error: {e}")

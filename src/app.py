@@ -536,6 +536,54 @@ class ShadowingApp:
             sample_rate=16000, block_size=4000,
             device=self._selected_input_device,
         )
+
+        self._show_training()
+        self.set_training_status("READY — CLICK [START] TO BEGIN")
+        self._awaiting_return = False
+        self.btn_terminate.configure(
+            text="START",
+            fg_color=C["green"],
+            hover_color=C["green"],
+            border_color=C["green_dim"],
+            state=tk.NORMAL,
+        )
+        self._training_state = "ready"
+
+    def _on_training_action(self):
+        if self._training_state == "ready":
+            self._begin_countdown()
+        elif self._awaiting_return:
+            self._finish_transition(self._final_status)
+        else:
+            self._stop_shadowing()
+
+    def _begin_countdown(self):
+        from src.utils.config import get_config
+        config = get_config()
+        total = config.get("training", {}).get("countdown_seconds", 3.0)
+        total = max(0.5, min(total, 10.0))
+
+        self._training_state = "countdown"
+        self._countdown_remaining = total
+        self.btn_terminate.configure(
+            text="...", state=tk.DISABLED,
+            fg_color=C["button_dim"],
+            border_color=C["fg_dim"],
+        )
+        self._countdown_tick()
+
+    def _countdown_tick(self):
+        self._countdown_remaining -= 0.05
+        if self._countdown_remaining <= 0:
+            self.set_training_status("TRAINING IN PROGRESS — FOLLOW THE AUDIO...")
+            self._start_playback()
+        else:
+            self.set_training_status(
+                f"GET READY... {self._countdown_remaining:.2f}s"
+            )
+            self.root.after(50, self._countdown_tick)
+
+    def _start_playback(self):
         self.audio_recorder.start()
         print(f"[App] AudioRecorder started, device={self._selected_input_device}")
 
@@ -544,11 +592,8 @@ class ShadowingApp:
 
         self._is_running = True
         self._practice_start_time = time.time()
+        self._training_state = "running"
 
-        self._show_training()
-        self.set_training_status("TRAINING IN PROGRESS — FOLLOW THE AUDIO...")
-
-        self._awaiting_return = False
         self.btn_terminate.configure(
             text="TERMINATE",
             fg_color=C["button_stop"],
@@ -572,6 +617,7 @@ class ShadowingApp:
     def _stop_shadowing(self):
         print("[App] _stop_shadowing called")
         self._is_running = False
+        self._training_state = "stopped"
         try:
             self.audio_player.stop()
             print("[App] audio_player stopped")

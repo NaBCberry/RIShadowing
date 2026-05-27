@@ -27,6 +27,7 @@ _DEFAULTS = {
     "training": {
         "default_language": "en",
         "difficulty_filter": "all",
+        "countdown_seconds": 3.0,
     },
 }
 
