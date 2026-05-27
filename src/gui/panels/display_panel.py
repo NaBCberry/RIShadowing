@@ -38,7 +38,7 @@ class DisplayPanel(ctk.CTkFrame):
         ).pack(side=tk.LEFT, padx=(2, 0))
 
         self.ref_display = ctk.CTkTextbox(
-            left_frame, font=("Consolas", 12),
+            left_frame, font=("Consolas", 16),
             fg_color=C["bg_input"], text_color=C["fg_secondary"],
             border_width=1, border_color=C["cyan_dim"],
             corner_radius=2,
@@ -96,7 +96,7 @@ class DisplayPanel(ctk.CTkFrame):
         ).pack(side=tk.LEFT, padx=(2, 0))
 
         self.user_display = ctk.CTkTextbox(
-            right_frame, font=("Consolas", 12),
+            right_frame, font=("Consolas", 14),
             fg_color=C["bg_input"], text_color=C["cyan"],
             border_width=1, border_color=C["orange_dim"],
             corner_radius=2,
