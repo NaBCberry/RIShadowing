@@ -272,16 +272,15 @@ main.py ──► ShadowingApp (src/app.py)
 
 ## 已知问题与技术债
 
-| 优先级 | 问题 | 位置 | 说明 |
-|--------|------|------|------|
-| P1 | 逐词色条与参考文本高亮不同步 | `comparator.py` + `display_panel.py` | `get_current_ref_word_index` 基于含标点的 `_word_timings` 推进高亮（含逗号句号等占位），而色条 `breakdown` 只含实词（`_word_mask` 过滤后），两者索引粒度不一致，导致高亮走到标点时色条仍停留在上一个实词位置 |
-| — | 重复 ABC 定义 | `src/services/tts/__init__.py` vs `src/services/tts/base.py` | `BaseTTSEngine` 在两处定义，实际只用 `__init__.py` 版本，`base.py` 为死代码 |
-| — | 空占位文件 | `src/models/practice_record.py` | 完全为空，实际练习记录逻辑全在 `material.py` 中 |
-| — | 无类型标注 | 全局 | 大多数方法参数无类型提示，仅少量使用 `typing` |
-| — | Print 日志 | 全局 | 未使用 `logging` 模块，全项目 `print()` 调试输出 |
-| — | 硬编码默认文本 | `src/gui/panels/input_panel.py:51-55` | 内置了一段英文绕口令作为默认文本 |
-| — | 无单元测试 | 全局 | 项目中无任何测试文件 |
-| — | Windows 路径假设 | `piper_tts.py` 等 | `piper.exe` 搜索逻辑隐含 Windows 假设 |
+| 问题 | 位置 | 说明 |
+|------|------|------|
+| 重复 ABC 定义 | `src/services/tts/__init__.py` vs `src/services/tts/base.py` | `BaseTTSEngine` 在两处定义，实际只用 `__init__.py` 版本，`base.py` 为死代码 |
+| 空占位文件 | `src/models/practice_record.py` | 完全为空，实际练习记录逻辑全在 `material.py` 中 |
+| 无类型标注 | 全局 | 大多数方法参数无类型提示，仅少量使用 `typing` |
+| Print 日志 | 全局 | 未使用 `logging` 模块，全项目 `print()` 调试输出 |
+| 硬编码默认文本 | `src/gui/panels/input_panel.py:51-55` | 内置了一段英文绕口令作为默认文本 |
+| 无单元测试 | 全局 | 项目中无任何测试文件 |
+| Windows 路径假设 | `piper_tts.py` 等 | `piper.exe` 搜索逻辑隐含 Windows 假设 |
 
 ---
 
