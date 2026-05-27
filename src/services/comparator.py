@@ -179,7 +179,7 @@ class ShadowComparator:
     ) -> Dict:
         current_ref_idx = self.get_current_ref_word_index(ref_elapsed)
 
-        if current_ref_idx == 0:
+        if not self._word_timings or ref_elapsed <= 0:
             return {
                 "status": "waiting",
                 "message": "等待开始...",
