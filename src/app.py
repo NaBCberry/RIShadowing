@@ -204,6 +204,13 @@ class ShadowingApp:
         self.display_panel = DisplayPanel(main, self)
         self.display_panel.pack(fill=tk.BOTH, expand=True)
 
+        self.countdown_overlay = tk.Label(
+            main, text="",
+            font=(FONT_FAMILY, 72, "bold"),
+            fg=C["cyan"],
+            bg=C["bg_dark"],
+        )
+
         bottom = ctk.CTkFrame(self.training_screen, fg_color=C["bg_panel"])
         bottom.pack(fill=tk.X, side=tk.BOTTOM, padx=14, pady=(0, 10))
 
@@ -573,12 +580,17 @@ class ShadowingApp:
             fg_color=C["button_dim"],
             border_color=C["fg_dim"],
         )
+        self.countdown_overlay.place(relx=0.5, rely=0.5, anchor=tk.CENTER)
         self.set_training_status(f"GET READY... {self._countdown_remaining:.2f}s")
         self.root.after(50, self._countdown_tick)
 
     def _countdown_tick(self):
         self._countdown_remaining -= 0.05
+        self.countdown_overlay.configure(
+            text=f"{max(0, self._countdown_remaining):.2f}"
+        )
         if self._countdown_remaining <= 0:
+            self.countdown_overlay.place_forget()
             self.set_training_status("TRAINING IN PROGRESS — FOLLOW THE AUDIO...")
             print("[App] countdown finished, starting playback")
             self._start_playback()
