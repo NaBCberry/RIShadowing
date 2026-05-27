@@ -137,7 +137,6 @@ class DisplayPanel(ctk.CTkFrame):
 
         mask = self.app.comparator._word_mask if self.app.comparator else []
         word_count = sum(mask) if mask else len(reference_words)
-        print(f"[DisplayPanel] init_ref_display: tokens={len(reference_words)}, mask_sum={sum(mask) if mask else 'N/A'}, bars={word_count}")
         self._init_accuracy_bars(word_count)
 
     def _init_accuracy_bars(self, total: int):
@@ -151,8 +150,6 @@ class DisplayPanel(ctk.CTkFrame):
         h = 22
         n = max(total, 1)
         bar_w = max(canvas_w // n, 2)
-
-        print(f"[DisplayPanel] _init_accuracy_bars: total={total}, canvas_w={canvas_w}, bar_w={bar_w}")
 
         for i in range(total):
             x0 = i * bar_w

@@ -188,7 +188,7 @@ class ShadowComparator:
                 "breakdown": [],
             }
 
-        ref_slice = self._ref_words[:current_ref_idx]
+        ref_slice = self._ref_words[:current_ref_idx + 1]
 
         user_text = " ".join(w["word"] for w in recognized_words)
         user_words_all = self._tokenize(user_text) if user_text.strip() else []
