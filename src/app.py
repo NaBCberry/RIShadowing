@@ -548,8 +548,10 @@ class ShadowingApp:
             state=tk.NORMAL,
         )
         self._training_state = "ready"
+        print(f"[App] _start_shadowing: training screen ready, btn=START, state=ready")
 
     def _on_training_action(self):
+        print(f"[App] _on_training_action: state={self._training_state}, awaiting={self._awaiting_return}")
         if self._training_state == "ready":
             self._begin_countdown()
         elif self._awaiting_return:
@@ -562,6 +564,7 @@ class ShadowingApp:
         config = get_config()
         total = config.get("training", {}).get("countdown_seconds", 3.0)
         total = max(0.5, min(total, 10.0))
+        print(f"[App] _begin_countdown: total={total}")
 
         self._training_state = "countdown"
         self._countdown_remaining = total
@@ -570,12 +573,14 @@ class ShadowingApp:
             fg_color=C["button_dim"],
             border_color=C["fg_dim"],
         )
-        self._countdown_tick()
+        self.set_training_status(f"GET READY... {self._countdown_remaining:.2f}s")
+        self.root.after(50, self._countdown_tick)
 
     def _countdown_tick(self):
         self._countdown_remaining -= 0.05
         if self._countdown_remaining <= 0:
             self.set_training_status("TRAINING IN PROGRESS — FOLLOW THE AUDIO...")
+            print("[App] countdown finished, starting playback")
             self._start_playback()
         else:
             self.set_training_status(
@@ -584,6 +589,7 @@ class ShadowingApp:
             self.root.after(50, self._countdown_tick)
 
     def _start_playback(self):
+        print("[App] _start_playback: starting recorder and player")
         self.audio_recorder.start()
         print(f"[App] AudioRecorder started, device={self._selected_input_device}")
 
@@ -606,13 +612,8 @@ class ShadowingApp:
             self.root.after(0, self._on_practice_finished)
 
         self.audio_player.play(on_finished=on_audio_finished)
+        print(f"[App] audio_player.play() called, duration={self.audio_player.duration:.1f}s")
         self.root.after(50, self._update_loop)
-
-    def _on_training_action(self):
-        if self._awaiting_return:
-            self._finish_transition(self._final_status)
-        else:
-            self._stop_shadowing()
 
     def _stop_shadowing(self):
         print("[App] _stop_shadowing called")
