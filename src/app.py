@@ -308,7 +308,7 @@ class ShadowingApp:
             self.root,
             extract_dir=get_data_dir(),
         )
-        self.wait_window(dialog)
+        self.root.wait_window(dialog)
         if dialog.result:
             self.set_status("MODEL DOWNLOADED — LOADING...")
             self.root.update()

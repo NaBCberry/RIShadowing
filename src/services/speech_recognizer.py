@@ -3,13 +3,27 @@ import os
 import glob
 import queue
 import threading
+import sys
+
+# PyInstaller frozen env workaround for vosk
+# vosk's open_dll() calls os.add_dll_directory() on paths that may not exist
+# in the frozen extraction, causing FileNotFoundError on import
+if getattr(sys, "frozen", False):
+    original_add_dll = os.add_dll_directory
+    def _safe_add_dll(path):
+        if os.path.isdir(path):
+            original_add_dll(path)
+    os.add_dll_directory = _safe_add_dll
 
 try:
     import vosk
     VOSK_AVAILABLE = True
-except Exception:
+except Exception as e:
     VOSK_AVAILABLE = False
-    print("[STT] vosk import failed — running without offline ASR")
+    print(f"[STT] vosk import failed ({e}) — running without offline ASR")
+finally:
+    if getattr(sys, "frozen", False):
+        os.add_dll_directory = original_add_dll
 
 
 def _find_vosk_model():

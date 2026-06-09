@@ -24,7 +24,11 @@ def get_data_dir() -> str:
         try:
             import json
             with open(cfg_path, "r", encoding="utf-8") as f:
-                cfg = json.load(f)
+                content = f.read()
+            # Some installers write paths with single backslashes, which are
+            # invalid JSON escapes. Fix them before parsing.
+            content = content.replace("\\", "/")
+            cfg = json.loads(content)
             raw = cfg.get("data_dir")
             if raw:
                 data_dir = _resolve_data_dir(raw, app_dir)
