@@ -1,7 +1,7 @@
 # 影子跟读训练软件 — 项目概览
 
 > AI 驱动的英语影子跟读（Shadowing）桌面训练工具  
-> 当前版本：**v1.2** | 平台：Windows（可跨平台）  
+> 当前版本：**v1.3.0** | 平台：Windows（可跨平台）  
 > UI 主题：**明日方舟（Arknights）暗色科幻工业风**
 
 ---
@@ -14,6 +14,7 @@
 - [编程风格](#编程风格)
 - [当前功能清单](#当前功能清单)
 - [未来计划增加的功能](#未来计划增加的功能)
+- [打包与发布](#打包与发布)
 - [已知问题与技术债](#已知问题与技术债)
 - [开发约定](#开发约定)
 
@@ -46,8 +47,8 @@
 | `requirements.txt` | 依赖声明（8 个包） |
 | `config.example.json` | 参考配置文件，首次运行自动生成 `config.json` |
 | `.env.example` | 参考环境变量（`WHISPER_API_KEY`） |
-| `.gitignore` | 排除 pycache、vosk 模型、venv、临时文件等 |
-| `version.txt` | 语义化版本号源（如 `1.3.0`） |
+| `.gitignore` | 排除 pycache、vosk 模型、venv、临时文件、构建产物等 |
+| `version.txt` | 语义化版本号源（当前 `1.3.0`） |
 | `build.py` | 一键构建脚本：PyInstaller → Inno Setup / 便携 zip |
 | `build.spec` | PyInstaller 打包规格文件 |
 | `installer.iss.template` | Inno Setup 安装脚本模板（含数据目录选择页） |
@@ -279,7 +280,8 @@ main.py ──► ShadowingApp (src/app.py)
 
 ### 长期
 
-- [ ] **跨平台打包** — macOS/Linux 支持，PyInstaller 打包发布
+- [x] **Windows 打包发布** — PyInstaller + Inno Setup 安装包 + 便携版
+- [ ] **跨平台（macOS/Linux）** — 适配非 Windows 平台的 audio/OS 差异
 - [ ] **联网素材库** — 从公开 API（如 TED、VOA）搜索和导入素材
 - [ ] **社区素材分享** — 用户上传/下载跟读素材
 - [ ] **AI 教练反馈** — 接入大模型，对发音错误给出具体纠正建议（如音标、口型）
@@ -308,3 +310,81 @@ main.py ──► ShadowingApp (src/app.py)
 4. **新增 GUI 面板**：在 `src/gui/panels/` 下新建文件，在 `app.py` 中实例化并加入布局
 5. **素材库操作**：通过 `src/models/material.py` 中的函数操作，不直接写 SQL
 6. **播放/录音**：使用 `sounddevice` 的 InputStream/OutputStream，不另起线程直接操作 PyAudio
+
+---
+
+## 打包与发布
+
+### 构建工具链
+
+| 文件 | 功能 |
+|------|------|
+| `build.py` | 一键构建脚本：`python build.py [--all/--portable/--full/--installer]` |
+| `build.spec` | PyInstaller 打包规格定义（含全部 hidden imports、data files） |
+| `installer.iss.template` | Inno Setup 安装脚本模板（Pascal + 数据目录选择页） |
+| `version.txt` | 语义化版本号源（当前 `1.3.0`） |
+
+### 使用方式
+
+```bash
+# 安装依赖
+pip install -r requirements.txt
+pip install pyinstaller
+
+# 仅打包便携版（Lite，无模型）
+python build.py --portable
+
+# 打包便携版 Full（含 Vosk 模型，~40MB）
+python build.py --portable --full
+
+# 打包安装版（Inno Setup，需安装 Inno Setup 6）
+python build.py --installer
+
+# 打包全部版本
+python build.py --all
+```
+
+### 产物矩阵
+
+| 产物 | 模型 | 格式 | 大小 | 适用场景 |
+|------|------|------|------|---------|
+| `RIShadowing_x.x.x_Portable_Lite.zip` | ❌ | `.zip` | ~58 MB | 便携用户，首次启动自动下载模型 |
+| `RIShadowing_x.x.x_Portable_Full.zip` | ✅ | `.zip` | ~97 MB | 便携用户，开箱即用无需联网 |
+| `RIShadowing_x.x.x_Lite_Setup.exe` | ❌ | `.exe` 安装向导 | ~51 MB | 安装版，首次启动自动下载模型 |
+
+### 安装版特色
+
+- **安装向导**：Inno Setup 制作，含安装目录选择 + 数据目录选择页
+- **数据目录**：安装时三选一（AppData 推荐 / 应用目录 / 自定义路径），数据与程序分离，覆盖安装时保留
+- **快捷方式**：桌面图标 + 开始菜单程序组（含启动和卸载项）
+- **卸载**：卸载时询问是否删除用户数据（配置、练习记录、下载的模型）
+
+### 数据目录结构
+
+```
+%APPDATA%\RIShadowing\          # 安装版默认数据目录（或便携版 exe 同目录）
+├── config.json                 # 配置（data_dir 字段指向本目录）
+├── .env                        # API 密钥
+├── materials.db                # 练习素材库 SQLite
+├── vosk-model-small-en-us-*    # 自动下载的 Vosk 语音模型
+└── vosk-model-en-us-*          # 大模型（可选下载）
+```
+
+### 构建流程（`build.py` 内部）
+
+```
+version.txt (版本号)
+     ↓
+PyInstaller (build.spec)
+     ↓
+  dist_work/RIShadowing/  (可运行目录)
+     ├─→ copy_extra_files (config.example.json + version.txt)
+     ├─→ Inno Setup (installer.iss.template) → Setup.exe
+     └─→ zip 压缩 → Portable.zip
+```
+
+### 先决条件
+
+1. **Python 环境**：已安装 `requirements.txt` 中的依赖
+2. **PyInstaller**：`pip install pyinstaller`
+3. **Inno Setup 6**（仅安装版需要）：从 https://jrsoftware.org/isinfo.php 下载安装
