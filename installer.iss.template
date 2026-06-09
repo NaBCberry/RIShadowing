@@ -19,6 +19,7 @@ Compression=lzma2
 SolidCompression=yes
 OutputDir=dist_output
 OutputBaseFilename=RIShadowing_{#MyAppVersion}_Setup
+SetupIconFile=amiya.ico
 PrivilegesRequired=admin
 DisableDirPage=no
 DisableProgramGroupPage=yes

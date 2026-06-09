@@ -71,6 +71,7 @@ hidden_imports = [
 # --- Data files bundled into dist/ root ---
 data_files = [
     ("version.txt", "."),
+    ("amiya.ico", "."),
 ]
 
 block_cipher = None
@@ -80,6 +81,7 @@ a = Analysis(
     pathex=[str(PROJECT_ROOT)],
     binaries=_find_vosk_dlls(),
     datas=data_files,
+    icon=str(PROJECT_ROOT / "amiya.ico"),
     hiddenimports=hidden_imports,
     hookspath=[],
     hooksconfig={},
@@ -111,6 +113,7 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
+    icon=str(PROJECT_ROOT / "amiya.ico"),
     contents_directory=".",
 )
 
