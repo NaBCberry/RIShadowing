@@ -7,8 +7,9 @@ import threading
 try:
     import vosk
     VOSK_AVAILABLE = True
-except ImportError:
+except Exception:
     VOSK_AVAILABLE = False
+    print("[STT] vosk import failed — running without offline ASR")
 
 
 def _find_vosk_model():

@@ -19,7 +19,7 @@ class VoskASREngine(BaseASREngine):
         try:
             import vosk
             return _find_vosk_model() is not None
-        except ImportError:
+        except Exception:
             return False
 
     def transcribe(self, audio_path: str) -> Dict:
