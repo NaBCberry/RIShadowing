@@ -81,7 +81,6 @@ a = Analysis(
     pathex=[str(PROJECT_ROOT)],
     binaries=_find_vosk_dlls(),
     datas=data_files,
-    icon=str(PROJECT_ROOT / "amiya.ico"),
     hiddenimports=hidden_imports,
     hookspath=[],
     hooksconfig={},
@@ -101,6 +100,7 @@ exe = EXE(
     a.datas,
     [],
     name="RIShadowing",
+    icon=str(PROJECT_ROOT / "amiya.ico"),
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
@@ -113,7 +113,6 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    icon=str(PROJECT_ROOT / "amiya.ico"),
     contents_directory=".",
 )
 
