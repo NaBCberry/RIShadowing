@@ -30,6 +30,7 @@ class ShadowingApp:
         self.root.geometry("1140x820")
         self.root.minsize(960, 680)
         self.root.configure(fg_color=C["bg_dark"])
+        self._set_window_icon()
 
         self.audio_player = AudioPlayer()
         self.audio_recorder = AudioRecorder(sample_rate=16000, block_size=4000)
@@ -64,6 +65,16 @@ class ShadowingApp:
         print("=" * 54)
 
         self.root.protocol("WM_DELETE_WINDOW", self._on_close)
+
+    def _set_window_icon(self):
+        try:
+            from src.utils.paths import get_app_dir
+            import os
+            icon_path = os.path.join(get_app_dir(), "RIShadowing.ico")
+            if os.path.isfile(icon_path):
+                self.root.iconbitmap(icon_path)
+        except Exception:
+            pass
 
     def _build_title_bar(self):
         title_bar = tk.Frame(
