@@ -60,7 +60,6 @@ hidden_imports = [
 
 # --- Data files bundled into dist/ root ---
 data_files = [
-    ("AGENTS.md", "."),
     ("version.txt", "."),
 ]
 

@@ -65,7 +65,7 @@ def pyinstaller_build():
 
 
 def copy_extra_files(exe_dir: Path):
-    for name in ["config.example.json", ".env.example", "AGENTS.md", "version.txt"]:
+    for name in ["config.example.json", "version.txt"]:
         src = PROJECT_ROOT / name
         if src.exists():
             shutil.copy2(src, exe_dir / name)
