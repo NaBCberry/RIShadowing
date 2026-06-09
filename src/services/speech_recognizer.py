@@ -12,11 +12,10 @@ except ImportError:
 
 
 def _find_vosk_model():
-    current_dir = os.path.dirname(os.path.abspath(__file__))
-    project_root = os.path.dirname(os.path.dirname(current_dir))
+    from src.utils.paths import get_app_dir, get_data_dir
     search_dirs = [
-        current_dir,
-        project_root,
+        get_data_dir(),
+        get_app_dir(),
         os.getcwd(),
     ]
     for search_dir in search_dirs:

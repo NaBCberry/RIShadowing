@@ -1,5 +1,6 @@
 import os
 import json
+from src.utils.paths import get_config_path, get_env_path, get_data_dir
 
 _DEFAULTS = {
     "audio": {
@@ -29,11 +30,19 @@ _DEFAULTS = {
         "difficulty_filter": "all",
         "countdown_seconds": 3.0,
     },
+    "data_dir": "app",
 }
 
-_CONFIG_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-_CONFIG_PATH = os.path.join(_CONFIG_DIR, "config.json")
-_ENV_PATH = os.path.join(_CONFIG_DIR, ".env")
+_CONFIG_PATH = None
+_ENV_PATH = None
+
+
+def _ensure_paths():
+    global _CONFIG_PATH, _ENV_PATH
+    if _CONFIG_PATH is None:
+        _CONFIG_PATH = get_config_path()
+    if _ENV_PATH is None:
+        _ENV_PATH = get_env_path()
 
 
 def _generate_config_file(path, defaults):
@@ -75,13 +84,16 @@ def _load_env(path):
 
 
 def init_config():
+    _ensure_paths()
     if not os.path.exists(_CONFIG_PATH):
         _generate_config_file(_CONFIG_PATH, _DEFAULTS)
     if not os.path.exists(_ENV_PATH):
         _generate_env_file(_ENV_PATH)
+    get_data_dir()
 
 
 def get_config():
+    _ensure_paths()
     config = dict(_DEFAULTS)
     if os.path.exists(_CONFIG_PATH):
         try:
@@ -93,6 +105,7 @@ def get_config():
 
 
 def get_env():
+    _ensure_paths()
     return _load_env(_ENV_PATH) if os.path.exists(_ENV_PATH) else {}
 
 

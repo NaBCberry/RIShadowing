@@ -301,11 +301,10 @@ class ShadowingApp:
 
     def _prompt_model_download(self):
         from src.gui.panels.download_dialog import ModelDownloadDialog
+        from src.utils.paths import get_data_dir
         dialog = ModelDownloadDialog(
             self.root,
-            extract_dir=os.path.dirname(
-                os.path.dirname(os.path.abspath(__file__))
-            ),
+            extract_dir=get_data_dir(),
         )
         self.wait_window(dialog)
         if dialog.result:

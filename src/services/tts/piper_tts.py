@@ -1,6 +1,7 @@
 import os
 import subprocess
 from src.services.tts.base import BaseTTSEngine
+from src.utils.paths import get_app_dir
 
 
 class PiperTTSEngine(BaseTTSEngine):
@@ -21,9 +22,7 @@ class PiperTTSEngine(BaseTTSEngine):
     @staticmethod
     def _find_piper() -> str:
         candidates = [
-            os.path.join(os.path.dirname(os.path.dirname(
-                os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-            )), "piper", "piper.exe"),
+            os.path.join(get_app_dir(), "piper", "piper.exe"),
             "piper", "piper.exe",
         ]
         for c in candidates:

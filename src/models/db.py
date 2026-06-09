@@ -1,6 +1,7 @@
 import sqlite3
 import os
 import threading
+from src.utils.paths import get_db_path
 
 
 class Database:
@@ -9,10 +10,7 @@ class Database:
 
     def __init__(self, db_path: str = None):
         if db_path is None:
-            project_root = os.path.dirname(os.path.dirname(
-                os.path.dirname(os.path.abspath(__file__))
-            ))
-            db_path = os.path.join(project_root, "materials.db")
+            db_path = get_db_path()
         self._db_path = db_path
         self._conn = None
 

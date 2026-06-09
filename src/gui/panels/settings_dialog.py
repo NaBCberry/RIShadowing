@@ -111,11 +111,11 @@ class SettingsDialog(ctk.CTkToplevel):
             val = max(0.5, min(val, 10.0))
             from src.utils.config import get_config
             import json
+            from src.utils.paths import get_config_path
             cfg = get_config()
             cfg.setdefault("training", {})["countdown_seconds"] = val
 
-            from src.utils.config import _CONFIG_PATH
-            with open(_CONFIG_PATH, "w", encoding="utf-8") as f:
+            with open(get_config_path(), "w", encoding="utf-8") as f:
                 json.dump(cfg, f, ensure_ascii=False, indent=2)
             messagebox.showinfo("SAVED", f"倒计时已设为 {val:.1f} 秒，下次开始跟读时生效")
         except ValueError:
