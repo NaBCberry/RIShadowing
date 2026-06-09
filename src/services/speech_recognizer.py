@@ -6,10 +6,17 @@ import threading
 import sys
 
 # PyInstaller frozen env workaround for vosk
-# libvosk.dll depends on libgcc_s_seh-1.dll, libstdc++-6.dll, libwinpthread-1.dll
-# which are extracted by PyInstaller to _MEIPASS root, not _MEIPASS/vosk/.
-# Copy them into the vosk dir so Windows can resolve them when loading libvosk.dll.
+# Problem 1: vosk's open_dll() calls os.add_dll_directory() on non-existent paths
+# Problem 2: libvosk.dll depends on libgcc/libstdc++ DLLs at _MEIPASS root
+_orig_add_dll = None
 if getattr(sys, "frozen", False) and hasattr(sys, "_MEIPASS"):
+    _orig_add_dll = os.add_dll_directory
+    def _safe_add(path):
+        if os.path.isdir(path):
+            return _orig_add_dll(path)
+    os.add_dll_directory = _safe_add
+
+    # Copy dependency DLLs into the vosk directory for Windows loader
     vosk_dir = os.path.join(sys._MEIPASS, "vosk")
     if os.path.isdir(vosk_dir):
         for dep in ["libgcc_s_seh-1.dll", "libstdc++-6.dll", "libwinpthread-1.dll"]:
@@ -28,6 +35,9 @@ try:
 except Exception as e:
     VOSK_AVAILABLE = False
     print(f"[STT] vosk import failed ({e}) — running without offline ASR")
+finally:
+    if _orig_add_dll is not None:
+        os.add_dll_directory = _orig_add_dll
 finally:
     if getattr(sys, "frozen", False):
         os.add_dll_directory = original_add_dll
