@@ -38,9 +38,6 @@ except Exception as e:
 finally:
     if _orig_add_dll is not None:
         os.add_dll_directory = _orig_add_dll
-finally:
-    if getattr(sys, "frozen", False):
-        os.add_dll_directory = original_add_dll
 
 
 def _find_vosk_model():
