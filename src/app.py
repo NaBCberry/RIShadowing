@@ -192,6 +192,20 @@ class ShadowingApp:
         )
         self.btn_download_model.pack(side=tk.RIGHT)
 
+        self.btn_settings = ctk.CTkButton(
+            status_frame, text="SETTINGS",
+            font=(FONT_FAMILY, 8, "bold"),
+            fg_color="transparent",
+            hover_color=C["bg_hover"],
+            text_color=C["fg_dim"],
+            border_width=1,
+            border_color=C["fg_dim"],
+            corner_radius=2,
+            width=80, height=22,
+            command=self._open_settings,
+        )
+        self.btn_settings.pack(side=tk.RIGHT, padx=(0, 4))
+
     def _build_training_screen(self):
         self.training_screen = ctk.CTkFrame(self.root, fg_color="transparent")
 
@@ -307,6 +321,10 @@ class ShadowingApp:
             else:
                 self.set_status("ERROR: Model downloaded but failed to load. Check console.")
                 print("[App] Model download completed but init failed")
+
+    def _open_settings(self):
+        from src.gui.panels.settings_dialog import SettingsDialog
+        SettingsDialog(self.root)
 
     def _on_text_changed(self):
         self._ref_audio_path = None

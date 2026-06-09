@@ -9,12 +9,12 @@ ERROR_DATABASE = [
     {
         "code": "E001",
         "pattern": "ModuleNotFoundError|ImportError",
-        "description": "Missing Python dependency",
+        "description": "缺少 Python 依赖包",
         "solution": (
-            "Reinstall dependencies:\n"
-            "  1. Open terminal in project directory\n"
-            "  2. Run: .venv\\Scripts\\pip install -r requirements.txt\n"
-            "  3. If venv is broken, recreate it:\n"
+            "请重新安装依赖：\n"
+            "  1. 在项目目录下打开终端\n"
+            "  2. 运行：.venv\\Scripts\\pip install -r requirements.txt\n"
+            "  3. 如果虚拟环境损坏，请重建：\n"
             "     python -m venv .venv\n"
             "     .venv\\Scripts\\pip install -r requirements.txt"
         ),
@@ -22,84 +22,84 @@ ERROR_DATABASE = [
     {
         "code": "E002",
         "pattern": "PortAudio|sounddevice.*error|OSError.*audio|Pa_Initialize",
-        "description": "Audio device or PortAudio library error",
+        "description": "音频设备或 PortAudio 驱动错误",
         "solution": (
-            "Audio backend failed to initialize:\n"
-            "  1. Check that your microphone and speakers are connected\n"
-            "  2. Try restarting your computer\n"
-            "  3. Reinstall sounddevice:\n"
+            "音频后端初始化失败：\n"
+            "  1. 检查麦克风和扬声器是否正确连接\n"
+            "  2. 尝试重启电脑\n"
+            "  3. 重新安装 sounddevice：\n"
             "     .venv\\Scripts\\pip uninstall sounddevice -y\n"
             "     .venv\\Scripts\\pip install sounddevice\n"
-            "  4. If using Bluetooth audio, switch to wired/built-in"
+            "  4. 如果使用蓝牙音频设备，请切换到有线或内置设备"
         ),
     },
     {
         "code": "E003",
         "pattern": "config\\.json|config.*corrupt|json.*decode",
-        "description": "Configuration file corrupted",
+        "description": "配置文件损坏",
         "solution": (
-            "Delete and regenerate config.json:\n"
-            "  1. Delete the file: del config.json\n"
-            "  2. Restart the application — it will auto-generate a fresh config\n"
-            "  3. Your previous settings will be reset to defaults"
+            "请删除并重新生成 config.json：\n"
+            "  1. 删除文件：del config.json\n"
+            "  2. 重启程序 — 将自动生成全新配置文件\n"
+            "  3. 之前的设置将恢复为默认值"
         ),
     },
     {
         "code": "E004",
         "pattern": "PermissionError|permission denied",
-        "description": "File permission denied",
+        "description": "文件权限不足",
         "solution": (
-            "The application cannot access a required file:\n"
-            "  1. Check that the project directory is not read-only\n"
-            "  2. Close other programs that might lock files (e.g. audio editors)\n"
-            "  3. Run as Administrator if needed"
+            "程序无法访问所需文件：\n"
+            "  1. 检查项目目录是否被设为只读\n"
+            "  2. 关闭可能占用文件的其他程序（如音频编辑器）\n"
+            "  3. 如有必要，以管理员身份运行"
         ),
     },
     {
         "code": "E005",
         "pattern": "Vosk.*model.*not found|No Vosk model",
-        "description": "Vosk speech model not downloaded",
+        "description": "Vosk 语音模型未下载",
         "solution": (
-            "The app will prompt you to download the model automatically.\n"
-            "If auto-download fails:\n"
-            "  1. Visit https://alphacephei.com/vosk/models\n"
-            "  2. Download vosk-model-small-en-us-0.15.zip\n"
-            "  3. Extract it to the project root directory"
+            "程序启动时会自动弹出下载对话框。\n"
+            "如果自动下载失败：\n"
+            "  1. 访问 https://alphacephei.com/vosk/models\n"
+            "  2. 下载 vosk-model-small-en-us-0.15.zip\n"
+            "  3. 解压到项目根目录"
         ),
     },
     {
         "code": "E006",
         "pattern": "MemoryError|numpy.*memory|out of memory",
-        "description": "Out of memory",
+        "description": "内存不足",
         "solution": (
-            "The audio file or model is too large for available memory:\n"
-            "  1. Close other applications to free RAM\n"
-            "  2. Use shorter audio files\n"
-            "  3. Use the small Vosk model (vosk-model-small-en-us-0.15)"
+            "音频文件或模型超出可用内存：\n"
+            "  1. 关闭其他应用程序释放内存\n"
+            "  2. 使用较短的音频文件\n"
+            "  3. 使用小型 Vosk 模型 (vosk-model-small-en-us-0.15)"
         ),
     },
     {
         "code": "E007",
         "pattern": "TclError|_tkinter\\.TclError",
-        "description": "GUI display error",
+        "description": "图形界面显示异常",
         "solution": (
-            "The graphical interface failed to initialize:\n"
-            "  1. Ensure you have a display/monitor connected\n"
-            "  2. Try reinstalling customtkinter:\n"
+            "图形界面初始化失败：\n"
+            "  1. 确保已连接显示器\n"
+            "  2. 尝试重新安装 customtkinter：\n"
             "     .venv\\Scripts\\pip uninstall customtkinter -y\n"
             "     .venv\\Scripts\\pip install customtkinter\n"
-            "  3. If on remote/headless server, GUI is not supported"
+            "  3. 远程/无头服务器不支持 GUI"
         ),
     },
     {
         "code": "E999",
         "pattern": None,
-        "description": "Unhandled application error",
+        "description": "未预期的程序错误",
         "solution": (
-            "An unexpected error occurred:\n"
-            "  1. Copy the console output below\n"
-            "  2. Check the project issue tracker or report a new issue\n"
-            "  3. Try restarting the application"
+            "发生了未预期的错误：\n"
+            "  1. 请复制下方的控制台输出\n"
+            "  2. 查看项目问题追踪或提交新 issue\n"
+            "  3. 尝试重启程序"
         ),
     },
 ]
