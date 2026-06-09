@@ -41,12 +41,16 @@
 
 | 文件 | 职责 |
 |------|------|
-| `main.py` | 入口：初始化配置 → 启动 `ShadowingApp` |
+| `main.py` | 入口：初始化配置 → 启动 `ShadowingApp`（含错误诊断包裹） |
 | `启动影子跟读.bat` | Windows 启动脚本，自动选择 venv 或系统 Python |
 | `requirements.txt` | 依赖声明（8 个包） |
 | `config.example.json` | 参考配置文件，首次运行自动生成 `config.json` |
 | `.env.example` | 参考环境变量（`WHISPER_API_KEY`） |
 | `.gitignore` | 排除 pycache、vosk 模型、venv、临时文件等 |
+| `version.txt` | 语义化版本号源（如 `1.3.0`） |
+| `build.py` | 一键构建脚本：PyInstaller → Inno Setup / 便携 zip |
+| `build.spec` | PyInstaller 打包规格文件 |
+| `installer.iss.template` | Inno Setup 安装脚本模板（含数据目录选择页） |
 
 ### `src/` — 源代码
 
@@ -61,7 +65,9 @@
 | 文件 | 职责 |
 |------|------|
 | `src/utils/config.py` | 配置管理：从硬编码默认值自动生成 `config.json` 和 `.env`；`init_config()` / `get_config()` / `deep_merge()` |
-| `src/utils/model_downloader.py` | 模型下载工具：从 alphacephei.com 下载 Vosk 模型 ZIP，解压到项目根目录，带进度回调 |
+| `src/utils/paths.py` | 数据目录解析：`get_app_dir()` / `get_data_dir()` / `get_db_path()` 等，支持便携版和安装版的目录解耦 |
+| `src/utils/model_downloader.py` | 模型下载工具：从 alphacephei.com 下载 Vosk 模型 ZIP，解压到数据目录，带进度回调 |
+| `src/utils/error_diagnosis.py` | 启动错误诊断：8 条错误码（E001~E999），含控制台捕获 + 中文解决方案弹窗 |
 
 #### `src/models/` — 数据层
 
@@ -106,6 +112,16 @@
 | `src/gui/panels/display_panel.py` | 富文本展示区：左栏参考文本逐词高亮+准确率色条，右栏用户实时识别文本+低置信度标记，底部详细统计——仅训练屏可见 |
 | `src/gui/panels/material_panel.py` | 素材库面板：可折叠、可搜索、CRUD 弹窗——仅设置屏可见 |
 | `src/gui/panels/download_dialog.py` | 模型下载弹窗：启动时未找到模型时弹出，可选小/大模型，显示下载+解压进度条 |
+| `src/gui/panels/settings_dialog.py` | 设置窗口：倒计时秒数配置 + 开发人员选项（手动触发各错误码诊断弹窗） |
+
+### 构建文件
+
+| 文件 | 职责 |
+|------|------|
+| `build.py` | 一键构建脚本：`python build.py [--full] [--portable]` |
+| `build.spec` | PyInstaller 打包规格定义 |
+| `installer.iss.template` | Inno Setup 安装脚本模板（含数据目录选择页） |
+| `version.txt` | 语义化版本号源 |
 
 ---
 
