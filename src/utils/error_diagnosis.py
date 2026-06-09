@@ -1,8 +1,39 @@
 import sys
 import io
+import os
 import traceback
 import re
 import ctypes
+from datetime import datetime
+from src.utils.paths import get_data_dir
+
+
+_LOG_PATH = None
+
+
+def get_log_path() -> str:
+    global _LOG_PATH
+    if _LOG_PATH is None:
+        _LOG_PATH = os.path.join(get_data_dir(), "debug.log")
+    return _LOG_PATH
+
+
+def write_to_log(data: str):
+    try:
+        path = get_log_path()
+        with open(path, "a", encoding="utf-8") as f:
+            f.write(data)
+    except Exception:
+        pass
+
+
+def open_log_file():
+    path = get_log_path()
+    if os.path.exists(path):
+        try:
+            os.startfile(path)
+        except Exception:
+            pass
 
 
 ERROR_DATABASE = [
@@ -118,6 +149,7 @@ class ConsoleCapture:
         self._active = True
         sys.stdout = self
         sys.stderr = self
+        write_to_log(f"\n{'='*50}\n[RIShadowing] {datetime.now().isoformat()}\n{'='*50}\n")
 
     def stop(self):
         if not self._active:
@@ -129,6 +161,8 @@ class ConsoleCapture:
             sys.stderr = self._original_stderr
 
     def write(self, data):
+        if data.strip():
+            write_to_log(data)
         if self._original_stdout:
             try:
                 self._original_stdout.write(data)
@@ -200,11 +234,13 @@ def show_error_dialog(diagnosis: dict):
         _fallback_print(diagnosis)
         return
 
+    import webbrowser
+
     ctk.set_appearance_mode("dark")
 
     root = ctk.CTk()
     root.title("ERROR DIAGNOSIS / 错误诊断")
-    root.geometry("680x520")
+    root.geometry("700x560")
     root.configure(fg_color="#08080f")
 
     header = tk.Frame(root, bg="#08080f", height=44)
@@ -269,17 +305,30 @@ def show_error_dialog(diagnosis: dict):
     console_text.insert("1.0", diagnosis.get("console", ""))
     console_text.configure(state="disabled")
 
-    btn = ctk.CTkButton(
-        body, text="CLOSE / 关闭",
+    btn_frame = ctk.CTkFrame(body, fg_color="transparent")
+    btn_frame.pack(fill=tk.X, pady=(10, 0))
+
+    ctk.CTkButton(
+        btn_frame, text="OPEN LOG FILE / 打开日志",
+        font=("Microsoft YaHei", 9),
+        fg_color="#333355",
+        hover_color="#444477",
+        text_color="#e8e8f4",
+        corner_radius=2,
+        width=160, height=30,
+        command=lambda: webbrowser.open(get_log_path()),
+    ).pack(side=tk.LEFT, padx=(0, 8))
+
+    ctk.CTkButton(
+        btn_frame, text="CLOSE / 关闭",
         font=("Microsoft YaHei", 11, "bold"),
         fg_color="#ff6b35",
         hover_color="#ff8855",
         text_color="#08080f",
         corner_radius=2,
-        width=160, height=36,
+        width=120, height=36,
         command=root.destroy,
-    )
-    btn.pack(pady=(10, 0))
+    ).pack(side=tk.RIGHT)
 
     root.mainloop()
 

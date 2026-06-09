@@ -89,9 +89,6 @@ def download_asset(url: str, dest: str, progress_callback: Callable = None):
                 pct = int(downloaded * 100 / total)
                 progress_callback("downloading", pct, None)
 
-    if progress_callback:
-        progress_callback("complete", 100, dest)
-
 
 def extract_portable_update(zip_path: str, target_dir: str, progress_callback: Callable = None):
     with zipfile.ZipFile(zip_path, "r") as zf:
@@ -103,17 +100,10 @@ def extract_portable_update(zip_path: str, target_dir: str, progress_callback: C
                 pct = int((i + 1) * 100 / total)
                 progress_callback("extracting", pct, None)
 
-    if progress_callback:
-        progress_callback("complete", 100, target_dir)
-
 
 def apply_portable_update(zip_path: str, progress_callback: Callable = None):
     target = get_app_dir()
     extract_portable_update(zip_path, target, progress_callback)
-    try:
-        os.remove(zip_path)
-    except Exception:
-        pass
 
 
 def launch_setup(setup_path: str):
@@ -126,7 +116,6 @@ def run_update_async(
     asset: dict,
     is_portable: bool,
     progress_callback: Callable = None,
-    on_complete: Callable = None,
 ):
     def _run():
         try:
@@ -137,13 +126,21 @@ def run_update_async(
             download_asset(asset["url"], dest, progress_callback)
 
             if is_portable:
+                if progress_callback:
+                    progress_callback("extracting", 0, None)
                 apply_portable_update(dest, progress_callback)
+                try:
+                    os.remove(dest)
+                except Exception:
+                    pass
 
-            if on_complete:
-                on_complete(dest if not is_portable else None)
+            if progress_callback:
+                progress_callback("complete", 100, dest if not is_portable else None)
 
         except Exception as e:
             print(f"[Updater] update failed: {e}")
+            import traceback
+            traceback.print_exc()
             if progress_callback:
                 progress_callback("error", 0, str(e))
 

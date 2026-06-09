@@ -48,6 +48,7 @@ class SettingsDialog(ctk.CTkToplevel):
 
         self._build_update_section(body)
         self._build_countdown_section(body)
+        self._build_debug_section(body)
         self._build_dev_section(body)
 
     def _build_update_section(self, body):
@@ -270,6 +271,85 @@ class SettingsDialog(ctk.CTkToplevel):
                     "倒计时设置将在本次会话中生效，但重启后会恢复默认值。")
         except ValueError:
             messagebox.showwarning("INVALID", "请输入有效数字")
+
+    def _build_debug_section(self, body):
+        section = ctk.CTkFrame(body, fg_color=C["bg_card"])
+        section.pack(fill=tk.X, pady=(0, 8))
+
+        header = tk.Frame(section, bg=C["bg_card"])
+        header.pack(fill=tk.X, padx=10, pady=(8, 2))
+
+        cvs = tk.Canvas(header, width=14, height=14, bg=C["bg_card"], highlightthickness=0)
+        cvs.pack(side=tk.LEFT)
+        draw_hex_indicator(cvs, 7, 7, size=5, color=C["yellow"], filled=False)
+
+        tk.Label(
+            header, text="DEBUG  ·  调试",
+            font=(FONT_FAMILY, 11, "bold"),
+            bg=C["bg_card"], fg=C["fg_primary"],
+        ).pack(side=tk.LEFT, padx=(4, 0))
+
+        hint = tk.Label(
+            section,
+            text="诊断日志可用于排查模型识别、音频设备等问题",
+            font=(FONT_FAMILY, 9),
+            bg=C["bg_card"], fg=C["fg_dim"],
+            justify=tk.LEFT,
+        )
+        hint.pack(fill=tk.X, padx=10, pady=(2, 4))
+
+        btn_frame = tk.Frame(section, bg=C["bg_card"])
+        btn_frame.pack(fill=tk.X, padx=10, pady=(0, 8))
+
+        ctk.CTkButton(
+            btn_frame, text="OPEN LOG",
+            font=(FONT_FAMILY, 9, "bold"),
+            fg_color=C["button_dim"],
+            hover_color=C["bg_hover"],
+            text_color=C["fg_secondary"],
+            border_width=1,
+            border_color=C["fg_dim"],
+            corner_radius=2,
+            width=100, height=26,
+            command=self._on_open_log,
+        ).pack(side=tk.LEFT, padx=(0, 6))
+
+        ctk.CTkButton(
+            btn_frame, text="RE-CHECK MODEL",
+            font=(FONT_FAMILY, 9, "bold"),
+            fg_color=C["button_dim"],
+            hover_color=C["bg_hover"],
+            text_color=C["fg_secondary"],
+            border_width=1,
+            border_color=C["fg_dim"],
+            corner_radius=2,
+            width=130, height=26,
+            command=self._on_recheck_model,
+        ).pack(side=tk.LEFT, padx=(0, 6))
+
+        self._debug_status = ctk.CTkLabel(
+            btn_frame, text="",
+            font=(FONT_FAMILY, 9),
+            text_color=C["fg_dim"],
+        )
+        self._debug_status.pack(side=tk.LEFT, padx=(4, 0))
+
+    def _on_open_log(self):
+        from src.utils.error_diagnosis import open_log_file
+        open_log_file()
+
+    def _on_recheck_model(self):
+        from src.services.speech_recognizer import SpeechRecognizer, _find_vosk_model
+        self._debug_status.configure(text="Checking...")
+        self.update()
+        model_dir = _find_vosk_model()
+        if model_dir:
+            self._debug_status.configure(text=f"Found: {model_dir}")
+        else:
+            from src.utils.paths import get_app_dir, get_data_dir
+            self._debug_status.configure(
+                text=f"Not found in data_dir={get_data_dir()} app_dir={get_app_dir()}"
+            )
 
     def _build_dev_section(self, body):
         section = ctk.CTkFrame(body, fg_color=C["bg_card"])
