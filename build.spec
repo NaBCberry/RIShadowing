@@ -71,7 +71,7 @@ hidden_imports = [
 # --- Data files bundled into dist/ root ---
 data_files = [
     ("version.txt", "."),
-    ("amiya.ico", "."),
+    ("RIShadowing.ico", "."),
 ]
 
 block_cipher = None
@@ -100,7 +100,7 @@ exe = EXE(
     a.datas,
     [],
     name="RIShadowing",
-    icon=str(PROJECT_ROOT / "amiya.ico"),
+    icon=str(PROJECT_ROOT / "RIShadowing.ico"),
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
