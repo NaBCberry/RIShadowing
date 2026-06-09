@@ -172,9 +172,11 @@ class ModelDownloadDialog(ctk.CTkToplevel):
             self._progress_bar.set(pct / 100)
         elif stage == "already_downloaded":
             self._status_label.configure(
-                text="Model already exists. Validating..."
+                text="Model already exists — ready to use"
             )
             self._progress_bar.set(1)
+            self._btn_download.configure(text="DONE", state=tk.DISABLED)
+            self._btn_cancel.configure(text="CLOSE", command=self._on_finish)
         elif stage == "complete":
             self._status_label.configure(
                 text="Download complete!"
