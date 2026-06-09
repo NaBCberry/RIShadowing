@@ -7,23 +7,11 @@ import sys
 
 
 def _prepare_vosk_import():
-    """PyInstaller frozen env: monkey-patch add_dll_directory + copy deps."""
+    """PyInstaller frozen env: monkey-patch add_dll_directory to skip non-existent paths."""
     if not getattr(sys, "frozen", False) or not hasattr(sys, "_MEIPASS"):
         return
     _orig = os.add_dll_directory
     os.add_dll_directory = lambda path: _orig(path) if os.path.isdir(path) else None
-
-    vosk_dir = os.path.join(sys._MEIPASS, "vosk")
-    if os.path.isdir(vosk_dir):
-        for dep in ["libgcc_s_seh-1.dll", "libstdc++-6.dll", "libwinpthread-1.dll"]:
-            src = os.path.join(sys._MEIPASS, dep)
-            dst = os.path.join(vosk_dir, dep)
-            if os.path.isfile(src) and not os.path.isfile(dst):
-                try:
-                    import shutil
-                    shutil.copy2(src, dst)
-                except Exception:
-                    pass
 
 
 _prepare_vosk_import()

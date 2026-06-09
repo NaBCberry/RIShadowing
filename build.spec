@@ -7,6 +7,15 @@ from pathlib import Path
 
 PROJECT_ROOT = Path(SPECPATH)
 
+# --- Explicit vosk DLL bundling (PyInstaller may miss these on some envs) ---
+def _find_vosk_dlls():
+    try:
+        import vosk
+        d = Path(vosk.__file__).parent
+        return [(str(f), "vosk") for f in d.glob("*.dll")]
+    except Exception:
+        return []
+
 # --- Block for hidden / custom modules hidden imports ---
 hidden_imports = [
     "src",
@@ -69,7 +78,7 @@ block_cipher = None
 a = Analysis(
     [str(PROJECT_ROOT / "main.py")],
     pathex=[str(PROJECT_ROOT)],
-    binaries=[],
+    binaries=_find_vosk_dlls(),
     datas=data_files,
     hiddenimports=hidden_imports,
     hookspath=[],
