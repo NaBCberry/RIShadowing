@@ -44,8 +44,8 @@ def get_config_path() -> str:
 
 
 def get_env_path() -> str:
-    """.env 始终在 app 目录"""
-    return os.path.join(get_app_dir(), ".env")
+    """.env 在数据目录（安装版中 app 目录不可写）"""
+    return os.path.join(get_data_dir(), ".env")
 
 
 def get_db_path() -> str:

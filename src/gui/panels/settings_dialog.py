@@ -115,9 +115,14 @@ class SettingsDialog(ctk.CTkToplevel):
             cfg = get_config()
             cfg.setdefault("training", {})["countdown_seconds"] = val
 
-            with open(get_config_path(), "w", encoding="utf-8") as f:
-                json.dump(cfg, f, ensure_ascii=False, indent=2)
-            messagebox.showinfo("SAVED", f"倒计时已设为 {val:.1f} 秒，下次开始跟读时生效")
+            try:
+                with open(get_config_path(), "w", encoding="utf-8") as f:
+                    json.dump(cfg, f, ensure_ascii=False, indent=2)
+                messagebox.showinfo("SAVED", f"倒计时已设为 {val:.1f} 秒，下次开始跟读时生效")
+            except PermissionError:
+                messagebox.showwarning("PERMISSION",
+                    "无法写入配置文件（安装目录只读）。\n"
+                    "倒计时设置将在本次会话中生效，但重启后会恢复默认值。")
         except ValueError:
             messagebox.showwarning("INVALID", "请输入有效数字")
 
