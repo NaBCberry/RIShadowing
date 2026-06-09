@@ -108,8 +108,8 @@ ERROR_DATABASE = [
 class ConsoleCapture:
     def __init__(self):
         self._buffer = io.StringIO()
-        self._original_stdout = sys.stdout
-        self._original_stderr = sys.stderr
+        self._original_stdout = sys.stdout if sys.stdout else None
+        self._original_stderr = sys.stderr if sys.stderr else None
         self._active = False
 
     def start(self):
@@ -123,15 +123,25 @@ class ConsoleCapture:
         if not self._active:
             return
         self._active = False
-        sys.stdout = self._original_stdout
-        sys.stderr = self._original_stderr
+        if self._original_stdout is not None:
+            sys.stdout = self._original_stdout
+        if self._original_stderr is not None:
+            sys.stderr = self._original_stderr
 
     def write(self, data):
-        self._original_stdout.write(data)
+        if self._original_stdout:
+            try:
+                self._original_stdout.write(data)
+            except Exception:
+                pass
         self._buffer.write(data)
 
     def flush(self):
-        self._original_stdout.flush()
+        if self._original_stdout:
+            try:
+                self._original_stdout.flush()
+            except Exception:
+                pass
 
     def get_output(self, tail_lines=20):
         lines = self._buffer.getvalue().splitlines()
