@@ -70,11 +70,28 @@ class ShadowingApp:
         try:
             from src.utils.paths import get_app_dir
             import os
-            icon_path = os.path.join(get_app_dir(), "RIShadowing.ico")
-            if os.path.isfile(icon_path):
-                self.root.iconbitmap(icon_path)
-                self.root.iconbitmap(default=icon_path)
-                self.root.tk.call("wm", "iconbitmap", self.root, default=icon_path)
+            ico_path = os.path.join(get_app_dir(), "RIShadowing.ico")
+            if os.path.isfile(ico_path):
+                self.root.iconbitmap(ico_path)
+            self.root.after(50, lambda: self._force_icon())
+        except Exception:
+            pass
+
+    def _force_icon(self):
+        try:
+            app_dir = get_app_dir()
+            import tkinter as tk
+            # Try PNG via iconphoto for higher quality
+            png = os.path.join(app_dir, "RIShadowing_icon.png")
+            if os.path.isfile(png):
+                img = tk.PhotoImage(file=png)
+                self.root.tk.call("wm", "iconphoto", self.root, "-default", img)
+                self.root._icon_img = img
+            # Also set ICO as fallback
+            ico = os.path.join(app_dir, "RIShadowing.ico")
+            if os.path.isfile(ico):
+                self.root.iconbitmap(ico)
+                self.root.iconbitmap(default=ico)
         except Exception:
             pass
 

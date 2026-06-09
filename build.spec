@@ -72,6 +72,8 @@ hidden_imports = [
 data_files = [
     ("version.txt", "."),
     ("RIShadowing.ico", "."),
+    ("RIShadowing.png", "."),
+    ("RIShadowing_icon.png", "."),
 ]
 
 block_cipher = None
