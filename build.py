@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-R.I.Shadowing — 一键构建脚本
+RIShadowing — 一键构建脚本
 
 用法:
     python build.py                   # 仅打包 Lite 安装版
@@ -55,7 +55,7 @@ def pyinstaller_build():
         print("[ERROR] PyInstaller failed")
         sys.exit(1)
 
-    exe_dir = DIST_WORK / "R.I.Shadowing"
+    exe_dir = DIST_WORK / "RIShadowing"
     if not exe_dir.exists():
         print(f"[ERROR] PyInstaller output not found at {exe_dir}")
         sys.exit(1)
@@ -78,7 +78,7 @@ def make_installer(version: str, include_model: bool):
     print(f"  [2/3] Inno Setup — creating {label} installer")
     print("=" * 60)
 
-    exe_dir = DIST_WORK / "R.I.Shadowing"
+    exe_dir = DIST_WORK / "RIShadowing"
     if not exe_dir.exists():
         print("[ERROR] Run PyInstaller first")
         return
@@ -91,7 +91,7 @@ def make_installer(version: str, include_model: bool):
 
     if include_model:
         iss_content = iss_content.replace(
-            "; Source: \"dist_work\\R.I.Shadowing\\vosk-model*", "Source: \"dist_work\\R.I.Shadowing\\vosk-model*"
+            "; Source: \"dist_work\\RIShadowing\\vosk-model*", "Source: \"dist_work\\RIShadowing\\vosk-model*"
         )
 
     iss_path.write_text(iss_content, encoding="utf-8")
@@ -110,7 +110,7 @@ def make_installer(version: str, include_model: bool):
         sys.exit(1)
 
     suffix = "Full" if include_model else "Lite" if not include_model else "Setup"
-    installer_name = f"R.I.Shadowing_{version}_{suffix}_Setup.exe"
+    installer_name = f"RIShadowing_{version}_{suffix}_Setup.exe"
 
     for f in DIST_OUTPUT.iterdir():
         if f.suffix == ".exe":
@@ -127,12 +127,12 @@ def make_portable(version: str, include_model: bool):
     print(f"  [3/3] Creating {label} portable zip")
     print("=" * 60)
 
-    exe_dir = DIST_WORK / "R.I.Shadowing"
+    exe_dir = DIST_WORK / "RIShadowing"
     if not exe_dir.exists():
         print("[ERROR] Run PyInstaller first")
         return
 
-    zip_name = f"R.I.Shadowing_{version}_Portable_{label}.zip"
+    zip_name = f"RIShadowing_{version}_Portable_{label}.zip"
     zip_path = DIST_OUTPUT / zip_name
 
     with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zf:
@@ -174,7 +174,7 @@ def _find_iscc() -> Path | None:
 
 def main():
     parser = argparse.ArgumentParser(
-        description="R.I.Shadowing Build Script",
+        description="RIShadowing Build Script",
     )
     parser.add_argument("--version", default=None, help="Version number")
     parser.add_argument("--full", action="store_true", help="Include Vosk model in portable")

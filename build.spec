@@ -1,5 +1,5 @@
 # -*- mode: python ; coding: utf-8 -*-
-# PyInstaller spec for R.I.Shadowing (Shadowing Practice)
+# PyInstaller spec for RIShadowing (Shadowing Practice)
 
 import os
 import sys
@@ -89,7 +89,7 @@ exe = EXE(
     a.zipfiles,
     a.datas,
     [],
-    name="R.I.Shadowing",
+    name="RIShadowing",
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
@@ -114,5 +114,5 @@ coll = COLLECT(
     first_strip_absolute_paths=False,
     strip=False,
     upx_exclude=[],
-    name="R.I.Shadowing",
+    name="RIShadowing",
 )

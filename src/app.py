@@ -26,7 +26,7 @@ ctk.set_default_color_theme("blue")
 class ShadowingApp:
     def __init__(self):
         self.root = ctk.CTk()
-        self.root.title("R.I. Shadowing Practice")
+        self.root.title("RIShadowing")
         self.root.geometry("1140x820")
         self.root.minsize(960, 680)
         self.root.configure(fg_color=C["bg_dark"])
@@ -60,7 +60,7 @@ class ShadowingApp:
         self._show_setup()
 
         print("=" * 54)
-        print("  R.I. Shadowing Practice v1.2 — Arknights UI")
+        print("  RIShadowing v1.2 — Arknights UI")
         print("=" * 54)
 
         self.root.protocol("WM_DELETE_WINDOW", self._on_close)
@@ -91,7 +91,7 @@ class ShadowingApp:
 
         border_canvas.create_text(
             46, 22, anchor=tk.W,
-            text="R.I. SHADOWING PRACTICE",
+            text="RISHADOWING",
             font=(FONT_FAMILY, 15, "bold"),
             fill=C["fg_primary"],
         )

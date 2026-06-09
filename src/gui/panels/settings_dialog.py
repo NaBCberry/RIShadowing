@@ -178,7 +178,7 @@ class SettingsDialog(ctk.CTkToplevel):
             "solution": entry["solution"],
             "traceback": f"Traceback (模拟):\n  File \"app.py\", line 99\n    raise RuntimeError('{entry['code']}')\nRuntimeError: {entry['description']}",
             "console": (
-                f"[App] Starting R.I. Shadowing Practice v1.2\n"
+                f"[App] Starting RIShadowing v1.2\n"
                 f"[Config] generated config.json\n"
                 f"[App] Vosk model loaded: vosk-model-small-en-us-0.15\n"
                 f"[Devices] Found 15 input, 22 output devices\n"
