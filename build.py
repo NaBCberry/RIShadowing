@@ -47,8 +47,11 @@ def pyinstaller_build():
     print("=" * 60)
 
     spec = PROJECT_ROOT / "build.spec"
+    ico = PROJECT_ROOT / "RIShadowing.ico"
     result = subprocess.run(
-        [sys.executable, "-m", "PyInstaller", str(spec), "--distpath", str(DIST_WORK)],
+        [sys.executable, "-m", "PyInstaller", str(spec),
+         "--distpath", str(DIST_WORK),
+         "--icon", str(ico)],
         cwd=PROJECT_ROOT,
     )
     if result.returncode != 0:
