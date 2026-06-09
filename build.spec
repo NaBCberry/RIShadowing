@@ -15,6 +15,7 @@ hidden_imports = [
     "src.utils.paths",
     "src.utils.model_downloader",
     "src.utils.error_diagnosis",
+    "src.utils.updater",
     "src.models.db",
     "src.models.material",
     "src.models.practice_record",

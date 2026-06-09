@@ -799,4 +799,20 @@ class ShadowingApp:
         self.root.destroy()
 
     def run(self):
+        self.root.after(3000, self._check_update_background)
         self.root.mainloop()
+
+    def _check_update_background(self):
+        from src.utils.updater import check_latest_release, parse_version, get_current_version
+        try:
+            result = check_latest_release()
+            if result:
+                latest = parse_version(result["version"])
+                current = parse_version(get_current_version())
+                if latest > current:
+                    self.set_status(
+                        f"UPDATE AVAILABLE: v{result['version']} — Open SETTINGS to download"
+                    )
+                    print(f"[App] Update available: v{result['version']}")
+        except Exception as e:
+            print(f"[App] update check skipped: {e}")

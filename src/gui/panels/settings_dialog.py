@@ -46,8 +46,153 @@ class SettingsDialog(ctk.CTkToplevel):
         )
         body.pack(fill=tk.BOTH, expand=True, padx=16, pady=(8, 0))
 
+        self._build_update_section(body)
         self._build_countdown_section(body)
         self._build_dev_section(body)
+
+    def _build_update_section(self, body):
+        section = ctk.CTkFrame(body, fg_color=C["bg_card"])
+        section.pack(fill=tk.X, pady=(0, 8))
+
+        header = tk.Frame(section, bg=C["bg_card"])
+        header.pack(fill=tk.X, padx=10, pady=(8, 2))
+
+        cvs = tk.Canvas(header, width=14, height=14, bg=C["bg_card"], highlightthickness=0)
+        cvs.pack(side=tk.LEFT)
+        draw_hex_indicator(cvs, 7, 7, size=5, color=C["green"], filled=False)
+
+        tk.Label(
+            header, text="UPDATE  ·  更新",
+            font=(FONT_FAMILY, 11, "bold"),
+            bg=C["bg_card"], fg=C["fg_primary"],
+        ).pack(side=tk.LEFT, padx=(4, 0))
+
+        row = tk.Frame(section, bg=C["bg_card"])
+        row.pack(fill=tk.X, padx=10, pady=(6, 8))
+
+        from src.utils.updater import get_current_version
+        self._update_info = tk.Label(
+            row, text=f"Current version: {get_current_version()}",
+            font=(FONT_FAMILY, 9),
+            bg=C["bg_card"], fg=C["fg_secondary"],
+            anchor="w",
+        )
+        self._update_info.pack(fill=tk.X)
+
+        btn_row = tk.Frame(section, bg=C["bg_card"])
+        btn_row.pack(fill=tk.X, padx=10, pady=(0, 8))
+
+        self._btn_check = ctk.CTkButton(
+            btn_row, text="CHECK FOR UPDATES",
+            font=(FONT_FAMILY, 9, "bold"),
+            fg_color=C["cyan_dim"],
+            hover_color=C["cyan"],
+            text_color=C["fg_primary"],
+            border_width=1,
+            border_color=C["cyan_dim"],
+            corner_radius=2,
+            width=160, height=26,
+            command=self._on_check_update,
+        )
+        self._btn_check.pack(side=tk.LEFT, padx=(0, 6))
+
+        self._update_status = ctk.CTkLabel(
+            btn_row, text="",
+            font=(FONT_FAMILY, 9),
+            text_color=C["fg_dim"],
+        )
+        self._update_status.pack(side=tk.LEFT, padx=(4, 0))
+
+    def _on_check_update(self):
+        from src.utils.updater import check_latest_release, parse_version, get_current_version
+
+        self._btn_check.configure(state=tk.DISABLED, text="CHECKING...")
+        self._update_status.configure(text="Checking GitHub...")
+        self.update()
+
+        result = check_latest_release()
+
+        if result is None:
+            self._update_status.configure(text="Failed to check — check network")
+            self._btn_check.configure(state=tk.NORMAL, text="CHECK FOR UPDATES")
+            return
+
+        current = parse_version(get_current_version())
+        latest = result["version_tuple"]
+
+        if latest <= current:
+            self._update_status.configure(
+                text=f"Up to date ({result['version']})"
+            )
+            self._btn_check.configure(state=tk.NORMAL, text="CHECK FOR UPDATES")
+            return
+
+        self._update_status.configure(
+            text=f"New version available: {result['version']}"
+        )
+        self._btn_check.configure(
+            text="DOWNLOAD UPDATE",
+            fg_color=C["button_primary"],
+            hover_color=C["button_hover"],
+            border_color=C["orange_dim"],
+            command=lambda: self._on_do_update(result),
+        )
+
+    def _on_do_update(self, release_info: dict):
+        from src.utils.updater import find_portable_asset, run_update_async, launch_setup
+
+        from tkinter import messagebox as mb
+        is_installed = False
+        try:
+            import sys
+            if getattr(sys, "frozen", False):
+                is_installed = "Setup" in str(get_app_dir())
+        except Exception:
+            pass
+
+        asset = find_portable_asset(release_info["assets"])
+        if not asset:
+            mb.showerror("UPDATE ERROR", "No portable update asset found")
+            return
+
+        size_mb = asset["size"] / 1024 / 1024
+        if not mb.askyesno(
+            "DOWNLOAD UPDATE",
+            f"Download {asset['name']} ({size_mb:.1f} MB)?\n\n"
+            f"Version: {release_info['version']}\n"
+            f"The app will restart after update."
+        ):
+            return
+
+        self._btn_check.configure(state=tk.DISABLED, text="UPDATING...")
+        self._update_status.configure(text="Downloading...")
+
+        def on_update_progress(stage, pct, extra):
+            if stage == "downloading":
+                self.after(0, lambda: self._update_status.configure(
+                    text=f"Downloading... {pct}%"
+                ))
+            elif stage == "extracting":
+                self.after(0, lambda: self._update_status.configure(
+                    text=f"Extracting... {pct}%"
+                ))
+            elif stage == "complete":
+                self.after(0, lambda: self._on_update_complete(extra))
+            elif stage == "error":
+                self.after(0, lambda: mb.showerror("UPDATE FAILED", str(extra)))
+
+        run_update_async(asset, is_portable=not is_installed,
+                          progress_callback=on_update_progress)
+
+    def _on_update_complete(self, extra):
+        from tkinter import messagebox as mb
+        if mb.askyesno("UPDATE COMPLETE",
+                        "Update downloaded and extracted.\n"
+                        "Restart now?"):
+            import sys
+            import os
+            python = sys.executable
+            os.execl(python, python, *sys.argv)
 
     def _build_countdown_section(self, body):
         section = ctk.CTkFrame(body, fg_color=C["bg_card"])
