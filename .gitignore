@@ -25,6 +25,8 @@ temp/
 
 dist/
 build/
+dist_work/
+dist_output/
 *.egg-info/
 
 .opencode
