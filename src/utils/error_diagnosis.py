@@ -193,7 +193,7 @@ def show_error_dialog(diagnosis: dict):
     ctk.set_appearance_mode("dark")
 
     root = ctk.CTk()
-    root.title("STARTUP ERROR")
+    root.title("ERROR DIAGNOSIS / 错误诊断")
     root.geometry("680x520")
     root.configure(fg_color="#08080f")
 
