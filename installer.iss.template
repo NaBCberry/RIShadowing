@@ -47,17 +47,29 @@ Filename: "{cmd}"; Parameters: "/c rmdir /s /q ""{code:GetDataDir}"""; Flags: ru
 [Code]
 var
   DataDirPage: TInputOptionWizardPage;
+  CustomDataDir: string;
+  DataDirEdit: TEdit;
 
 const
   optAppData = 0;
   optAppDir  = 1;
+  optCustom  = 2;
 
 function GetDataDir(Param: string): string;
 begin
   if DataDirPage.SelectedValueIndex = optAppData then
     Result := ExpandConstant('%APPDATA%\AI_Interpreter')
+  else if DataDirPage.SelectedValueIndex = optAppDir then
+    Result := ExpandConstant('{app}')
   else
-    Result := ExpandConstant('{app}');
+  begin
+    if DataDirEdit <> nil then
+      Result := DataDirEdit.Text
+    else if CustomDataDir <> '' then
+      Result := CustomDataDir
+    else
+      Result := ExpandConstant('{app}');
+  end;
 end;
 
 function RemoveDataDirCheck: Boolean;
@@ -67,7 +79,20 @@ begin
                    mbConfirmation, MB_YESNO) = idYes;
 end;
 
+procedure BrowseBtnClick(Sender: TObject);
+var
+  SelDir: string;
+begin
+  if BrowseForFolder('Select data directory:', SelDir, False) then
+  begin
+    CustomDataDir := SelDir;
+    DataDirEdit.Text := SelDir;
+  end;
+end;
+
 procedure InitializeWizard;
+var
+  BrowseBtn: TButton;
 begin
   DataDirPage := CreateInputOptionPage(
     wpSelectDir,
@@ -78,8 +103,26 @@ begin
 
   DataDirPage.Add('AppData (Roaming)'#13#10'Recommended — survives reinstallation');
   DataDirPage.Add('Application folder'#13#10'Same directory as the program');
+  DataDirPage.Add('Custom location:'#13#10'Specify any writable folder');
 
   DataDirPage.SelectedValueIndex := optAppData;
+  CustomDataDir := '';
+
+  DataDirEdit := TEdit.Create(WizardForm);
+  DataDirEdit.Parent := DataDirPage.Surface;
+  DataDirEdit.Left := 24;
+  DataDirEdit.Top := DataDirPage.Surface.Height - 36;
+  DataDirEdit.Width := DataDirPage.Surface.Width - 100;
+  DataDirEdit.Text := '';
+
+  BrowseBtn := TButton.Create(WizardForm);
+  BrowseBtn.Parent := DataDirPage.Surface;
+  BrowseBtn.Left := DataDirEdit.Left + DataDirEdit.Width + 4;
+  BrowseBtn.Top := DataDirEdit.Top;
+  BrowseBtn.Width := 70;
+  BrowseBtn.Height := 23;
+  BrowseBtn.Caption := 'Browse...';
+  BrowseBtn.OnClick := @BrowseBtnClick;
 end;
 
 procedure CurStepChanged(CurStep: TSetupStep);
