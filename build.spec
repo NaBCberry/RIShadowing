@@ -5,10 +5,7 @@ import os
 import sys
 from pathlib import Path
 
-PROJECT_ROOT = Path(__file__).parent
-
-# --- Read version ---
-version = (PROJECT_ROOT / "version.txt").read_text(encoding="utf-8").strip()
+PROJECT_ROOT = Path(SPECPATH)
 
 # --- Block for hidden / custom modules hidden imports ---
 hidden_imports = [
@@ -80,7 +77,7 @@ a = Analysis(
     runtime_hooks=[],
     excludes=[],
     noarchive=False,
-    module_collection_mode="pyz",
+    module_collection_mode={},
 )
 
 pyz = PYZ(a.pure, a.zipped_data, cipher=block_cipher)
@@ -105,6 +102,17 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    version=version,
     contents_directory=".",
+)
+
+coll = COLLECT(
+    exe,
+    a.binaries,
+    a.zipfiles,
+    a.datas,
+    # Include AGENTS.md and version.txt alongside the exe
+    first_strip_absolute_paths=False,
+    strip=False,
+    upx_exclude=[],
+    name="AI_Interpreter",
 )

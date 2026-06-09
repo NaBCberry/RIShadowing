@@ -1,0 +1,30 @@
+{
+  "_note": "这是配置文件示例，请勿修改。程序首次启动时自动从内置默认值生成 config.json。删除 config.json 可重置所有设置。",
+  "audio": {
+    "input_device": null,
+    "output_device": null,
+    "sample_rate": 16000,
+    "block_size": 4000
+  },
+  "vosk": {
+    "model_path": null
+  },
+  "tts": {
+    "engine": "edge",
+    "edge_tts_voice": "en-US-JennyNeural",
+    "piper_model_path": null
+  },
+  "asr": {
+    "whisper_api_key": null,
+    "whisper_endpoint": "https://api.openai.com/v1/audio/transcriptions"
+  },
+  "ui": {
+    "language": "zh",
+    "theme": "dark"
+  },
+  "training": {
+    "default_language": "en",
+    "difficulty_filter": "all",
+    "countdown_seconds": 3.0
+  }
+}
