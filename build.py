@@ -31,9 +31,14 @@ def read_version() -> str:
 def clean():
     for p in [DIST_WORK, DIST_OUTPUT]:
         if p.exists():
-            shutil.rmtree(p)
-    DIST_WORK.mkdir(parents=True)
-    DIST_OUTPUT.mkdir(parents=True)
+            try:
+                shutil.rmtree(p, ignore_errors=True)
+            except Exception:
+                pass
+    if not DIST_WORK.exists():
+        DIST_WORK.mkdir(parents=True)
+    if not DIST_OUTPUT.exists():
+        DIST_OUTPUT.mkdir(parents=True)
 
 
 def pyinstaller_build():
@@ -195,7 +200,7 @@ def main():
     if do_portable:
         make_portable(version, include_model=False)
         if args.full or args.all:
-            vosk_dirs = list(exe_dir.glob("vosk-model*"))
+            vosk_dirs = list(PROJECT_ROOT.glob("vosk-model*"))
             if not vosk_dirs:
                 print(
                     "[WARN] No Vosk model found in project root, "
@@ -203,7 +208,7 @@ def main():
                 )
             else:
                 for vd in vosk_dirs:
-                    shutil.copytree(vd, exe_dir / vd.name)
+                    shutil.copytree(vd, exe_dir / vd.name, dirs_exist_ok=True)
             make_portable(version, include_model=True)
 
     print("\n" + "=" * 60)
