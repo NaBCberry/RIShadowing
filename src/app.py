@@ -322,6 +322,11 @@ class ShadowingApp:
             else:
                 self.set_status("ERROR: Model downloaded but failed to load. Check console.")
                 print("[App] Model download completed but init failed")
+                import glob
+                from src.utils.paths import get_data_dir, get_app_dir
+                for d in [get_data_dir(), get_app_dir()]:
+                    for g in ["vosk-model*", "vosk-model*/am"]:
+                        print(f"[App] Search {d} for {g}: {glob.glob(os.path.join(d, g))}")
 
     def _open_settings(self):
         from src.gui.panels.settings_dialog import SettingsDialog

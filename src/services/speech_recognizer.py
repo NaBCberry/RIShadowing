@@ -19,6 +19,7 @@ def _find_vosk_model():
         get_app_dir(),
         os.getcwd(),
     ]
+    print(f"[STT] Searching model in: {search_dirs}")
     for search_dir in search_dirs:
         for pattern in ["vosk-model*", "vosk-model*/am"]:
             matches = glob.glob(os.path.join(search_dir, pattern))
@@ -28,7 +29,9 @@ def _find_vosk_model():
                 conf = os.path.join(m, "conf", "model.conf")
                 mdl = os.path.join(m, "am", "final.mdl")
                 if os.path.isfile(conf) and os.path.isfile(mdl):
+                    print(f"[STT] Model found: {m}")
                     return m
+    print(f"[STT] No Vosk model found in any search dir")
     return None
 
 

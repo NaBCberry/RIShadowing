@@ -74,3 +74,6 @@ def _extract_zip(zip_path: str, dest_dir: str, progress_callback=None):
             if progress_callback:
                 pct = int((i + 1) * 100 / total)
                 progress_callback("extracting", pct, None)
+
+    if progress_callback:
+        progress_callback("complete", 100, None)
