@@ -73,6 +73,8 @@ class ShadowingApp:
             icon_path = os.path.join(get_app_dir(), "RIShadowing.ico")
             if os.path.isfile(icon_path):
                 self.root.iconbitmap(icon_path)
+                self.root.iconbitmap(default=icon_path)
+                self.root.tk.call("wm", "iconbitmap", self.root, default=icon_path)
         except Exception:
             pass
 
