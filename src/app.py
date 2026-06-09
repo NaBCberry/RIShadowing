@@ -46,6 +46,8 @@ class ShadowingApp:
         self._current_material_id = None
         self._mode = "generate"
         self._awaiting_return = False
+        self._training_state = None
+        self._final_status = ""
 
         init_db()
 
