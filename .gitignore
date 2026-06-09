@@ -30,3 +30,4 @@ dist_output/
 *.egg-info/
 
 .opencode
+installer.iss
