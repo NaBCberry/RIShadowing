@@ -7,13 +7,16 @@ import sys
 
 # PyInstaller frozen env workaround for vosk
 # vosk's open_dll() calls os.add_dll_directory() on paths that may not exist
-# in the frozen extraction, causing FileNotFoundError on import
-if getattr(sys, "frozen", False):
+# in the frozen extraction, causing FileNotFoundError on import.
+# Also, libvosk.dll depends on libgcc/libstdc++ DLLs at _MEIPASS root.
+if getattr(sys, "frozen", False) and hasattr(sys, "_MEIPASS"):
     original_add_dll = os.add_dll_directory
     def _safe_add_dll(path):
         if os.path.isdir(path):
             original_add_dll(path)
     os.add_dll_directory = _safe_add_dll
+    # Ensure _MEIPASS root is also in DLL path for libvosk's dependencies
+    os.add_dll_directory(sys._MEIPASS)
 
 try:
     import vosk

@@ -65,7 +65,11 @@ def _generate_env_file(path):
 
 def _load_config(path):
     with open(path, "r", encoding="utf-8") as f:
-        return json.load(f)
+        content = f.read()
+    # Some installers write paths with single backslashes (invalid JSON escapes)
+    # Fix by replacing single backslashes not followed by valid escapes with forward slashes
+    content = content.replace("\\", "/")
+    return json.loads(content)
 
 
 def _load_env(path):

@@ -5,6 +5,7 @@ import shutil
 import zipfile
 import subprocess
 import threading
+import time
 from pathlib import Path
 from typing import Optional, Callable
 
@@ -14,6 +15,9 @@ from src.utils.paths import get_app_dir, get_data_dir
 
 GITHUB_REPO = "NaBCberry/RIShadowing"
 RELEASE_API = f"https://api.github.com/repos/{GITHUB_REPO}/releases/latest"
+
+_last_check_time = 0.0
+_last_check_result = None
 
 
 def get_current_version() -> str:
@@ -33,12 +37,21 @@ def parse_version(v: str) -> tuple:
 
 
 def check_latest_release() -> Optional[dict]:
+    global _last_check_time, _last_check_result
+
+    # Cache for 5 min to avoid GitHub API rate limiting
+    if time.time() - _last_check_time < 300 and _last_check_result is not None:
+        return _last_check_result
+
     try:
         resp = requests.get(RELEASE_API, timeout=15)
+        if resp.status_code == 403:
+            print("[Updater] GitHub API rate limited")
+            return _last_check_result if _last_check_result else None
         resp.raise_for_status()
         data = resp.json()
         tag = data.get("tag_name", "").lstrip("v")
-        return {
+        _last_check_result = {
             "version": tag,
             "version_tuple": parse_version(tag),
             "html_url": data.get("html_url", ""),
@@ -46,9 +59,11 @@ def check_latest_release() -> Optional[dict]:
             "published_at": data.get("published_at", ""),
             "assets": data.get("assets", []),
         }
+        _last_check_time = time.time()
+        return _last_check_result
     except Exception as e:
         print(f"[Updater] check failed: {e}")
-        return None
+        return _last_check_result if _last_check_result else None
 
 
 def find_portable_asset(assets: list) -> Optional[dict]:
