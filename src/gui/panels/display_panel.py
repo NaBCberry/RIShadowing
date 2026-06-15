@@ -115,11 +115,12 @@ class DisplayPanel(ctk.CTkFrame):
         self._last_partial = ""
 
         for word in reference_words:
-            start = len(self.ref_display.get("1.0", tk.END)) - 1
+            start = len(self.ref_display.get("1.0", "end-1c"))
             self.ref_display.insert(tk.END, word + " ", "future")
-            end = len(self.ref_display.get("1.0", tk.END)) - 1
+            end = len(self.ref_display.get("1.0", "end-1c"))
             self._ref_word_positions.append((start, end))
 
+        print(f"[Display] init with {len(reference_words)} words")
         self.partial_label.configure(text="")
         self.score_label.configure(text="")
         self.speed_indicator.configure(text="")
@@ -133,25 +134,21 @@ class DisplayPanel(ctk.CTkFrame):
         ref_elapsed = self.app.audio_player.position
         current_idx = self.app.comparator.get_current_ref_word_index(ref_elapsed)
 
-        if current_idx == self._current_ref_idx or current_idx >= len(self._ref_word_positions):
+        if current_idx == self._current_ref_idx:
             return
+        if current_idx >= len(self._ref_word_positions):
+            print(f"[Display] ref highlight OOB: idx={current_idx} >= {len(self._ref_word_positions)}")
+            current_idx = len(self._ref_word_positions) - 1
+
+        print(f"[Display] ref highlight: pos={ref_elapsed:.2f}s idx={current_idx}")
 
         for i, (start, end) in enumerate(self._ref_word_positions):
-            # Don't override shadowing colors with audio cursor colors
             if i in self._shadowed_words:
                 continue
-            if i == current_idx:
-                self.ref_display.tag_remove("past", f"1.0+{start}c", f"1.0+{end}c")
-                self.ref_display.tag_remove("future", f"1.0+{start}c", f"1.0+{end}c")
-                self.ref_display.tag_add("audio_cur", f"1.0+{start}c", f"1.0+{end}c")
-            elif i < current_idx:
-                self.ref_display.tag_remove("audio_cur", f"1.0+{start}c", f"1.0+{end}c")
-                self.ref_display.tag_remove("future", f"1.0+{start}c", f"1.0+{end}c")
-                self.ref_display.tag_add("past", f"1.0+{start}c", f"1.0+{end}c")
-            else:
-                self.ref_display.tag_remove("past", f"1.0+{start}c", f"1.0+{end}c")
-                self.ref_display.tag_remove("audio_cur", f"1.0+{start}c", f"1.0+{end}c")
-                self.ref_display.tag_add("future", f"1.0+{start}c", f"1.0+{end}c")
+            tag = "past" if i < current_idx else ("audio_cur" if i == current_idx else "future")
+            for t in ("past", "audio_cur", "future"):
+                self.ref_display.tag_remove(t, f"1.0+{start}c", f"1.0+{end}c")
+            self.ref_display.tag_add(tag, f"1.0+{start}c", f"1.0+{end}c")
 
         self._current_ref_idx = current_idx
         if current_idx < len(self._ref_word_positions):
