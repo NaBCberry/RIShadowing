@@ -51,8 +51,8 @@ var
   DataDirPage: TInputOptionWizardPage;
 
 const
-  optAppData = 0;
-  optAppDir  = 1;
+  optAppDir  = 0;
+  optAppData = 1;
 
 function GetDataDir(Param: string): string;
 begin
@@ -75,13 +75,13 @@ begin
     wpSelectDir,
     'User Data Directory',
     'Where should user data (records, config, models) be stored?',
-    'This data is preserved during upgrades. Select [AppData] to keep your data safe when uninstalling.',
+    'This data is preserved during upgrades.',
     True, False);
 
-  DataDirPage.Add('AppData (Roaming)'#13#10'Recommended — survives reinstallation');
-  DataDirPage.Add('Application folder'#13#10'Same directory as the program');
+  DataDirPage.Add('Application folder'#13#10'Recommended — same directory as the program');
+  DataDirPage.Add('AppData (Roaming)'#13#10'Survives reinstallation');
 
-  DataDirPage.SelectedValueIndex := optAppData;
+  DataDirPage.SelectedValueIndex := optAppDir;
 end;
 
 procedure CurStepChanged(CurStep: TSetupStep);
