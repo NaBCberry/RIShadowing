@@ -115,10 +115,17 @@ class DisplayPanel(ctk.CTkFrame):
         self.user_display.tag_config("green_word", foreground=C["green"])
         self.user_display.tag_config("yellow_word", foreground=C["yellow"])
         self.user_display.tag_config("red_word", foreground=C["red"])
-        self.user_display.tag_config("current", foreground=C["cyan"],
-                                      background="#004466")
         self.user_display.tag_config("low_conf", foreground=C["red"],
                                       underline=True)
+
+        self.partial_label = tk.Label(
+            right_frame,
+            font=("Consolas", 12, "italic"),
+            bg=C["bg_input"], fg=C["cyan"],
+            anchor="w", justify=tk.LEFT,
+            height=2,
+        )
+        self.partial_label.pack(fill=tk.X, pady=(4, 0))
 
         detail_frame = tk.Frame(right_frame, bg=C["bg_panel"])
         detail_frame.pack(fill=tk.X, pady=(8, 0))
@@ -197,7 +204,7 @@ class DisplayPanel(ctk.CTkFrame):
     def update_user_display(self, recognized_words, accuracy_result):
         breakdown = accuracy_result.get("breakdown", [])
 
-        # Insert only NEW words since last update
+        # Insert only NEW words since last update (never delete)
         new_count = len(breakdown)
         for i in range(self._last_user_word_count, new_count):
             item = breakdown[i]
@@ -211,17 +218,12 @@ class DisplayPanel(ctk.CTkFrame):
 
         self._last_user_word_count = new_count
 
-        # Update partial text (current unfinished word)
+        # Show partial text in a separate label (never touches the textbox)
         partial = self.app.speech_recognizer.partial_text
-        if partial != self._last_partial:
-            # Remove old partial text by deleting from the end
-            if self._last_partial:
-                pos = self.user_display.index(tk.END)
-                start = f"{pos} - {len(self._last_partial) + 1}c"
-                self.user_display.delete(start, "end-1c")
-            if partial:
-                self.user_display.insert(tk.END, partial + " ", "current")
-            self._last_partial = partial
+        if partial:
+            self.partial_label.configure(text=f"▎ {partial}")
+        else:
+            self.partial_label.configure(text="")
 
         self.user_display.see(tk.END)
 
