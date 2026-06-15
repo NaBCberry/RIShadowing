@@ -1,5 +1,6 @@
 import customtkinter as ctk
 import tkinter as tk
+import re
 from src.gui.styles import C, FONT_FAMILY, draw_hex_indicator
 
 
@@ -9,7 +10,8 @@ class DisplayPanel(ctk.CTkFrame):
         self.app = app
         self._ref_word_positions = []
         self._current_ref_idx = -1
-        self._last_user_word_count = 0
+        self._shadowing_idx = -1
+        self._shadowed_words = {}    # {index: "green"|"red"}
         self._last_partial = ""
         self._build()
 
@@ -20,131 +22,96 @@ class DisplayPanel(ctk.CTkFrame):
         top_bar.pack(fill=tk.X)
         top_bar.create_line(0, 0, 9999, 0, fill=C["cyan_dim"], width=1)
 
-        left_frame = tk.Frame(self, bg=C["bg_panel"])
-        left_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(12, 6), pady=10)
+        # ── MAIN: reference text (full height) ──
+        ref_container = tk.Frame(self, bg=C["bg_panel"])
+        ref_container.pack(fill=tk.BOTH, expand=True, padx=12, pady=(10, 0))
 
-        left_header = tk.Frame(left_frame, bg=C["bg_panel"])
-        left_header.pack(fill=tk.X)
+        header = tk.Frame(ref_container, bg=C["bg_panel"])
+        header.pack(fill=tk.X)
 
-        cvs1 = tk.Canvas(
-            left_header, width=16, height=16,
-            bg=C["bg_panel"], highlightthickness=0,
-        )
-        cvs1.pack(side=tk.LEFT)
-        draw_hex_indicator(cvs1, 8, 8, size=5, color=C["cyan"])
+        cvs = tk.Canvas(header, width=16, height=16, bg=C["bg_panel"], highlightthickness=0)
+        cvs.pack(side=tk.LEFT)
+        draw_hex_indicator(cvs, 8, 8, size=5, color=C["cyan"])
 
         tk.Label(
-            left_header, text="REFERENCE  ·  参考文本",
+            header, text="REFERENCE  ·  参考文本",
             font=(FONT_FAMILY, 10, "bold"),
             bg=C["bg_panel"], fg=C["fg_primary"],
         ).pack(side=tk.LEFT, padx=(2, 0))
 
+        # Score display in header
+        self.score_label = tk.Label(
+            header, text="",
+            font=(FONT_FAMILY, 9, "bold"),
+            bg=C["bg_panel"], fg=C["fg_dim"],
+        )
+        self.score_label.pack(side=tk.RIGHT, padx=(0, 4))
+
         self.ref_display = ctk.CTkTextbox(
-            left_frame, font=("Consolas", 16),
+            ref_container, font=("Consolas", 16),
             fg_color=C["bg_input"], text_color=C["fg_secondary"],
             border_width=1, border_color=C["cyan_dim"],
             corner_radius=2,
             wrap="word", state="normal",
         )
         self.ref_display.pack(fill=tk.BOTH, expand=True, pady=(6, 0))
+        # Tags for audio cursor (which word is being PLAYED)
         self.ref_display.tag_config("past", foreground="#555572")
-        self.ref_display.tag_config("current", foreground=C["cyan"],
+        self.ref_display.tag_config("audio_cur", foreground=C["cyan"],
                                      background="#004466")
         self.ref_display.tag_config("future", foreground="#666680")
+        # Tags for shadowing cursor (which word the USER is on)
+        self.ref_display.tag_config("shadow_match", foreground=C["green"])
+        self.ref_display.tag_config("shadow_miss", foreground=C["red"])
+        self.ref_display.tag_config("shadow_cur", foreground="#ffffff",
+                                     background="#0066aa")
 
-        self.word_accuracy_frame = tk.Frame(left_frame, bg=C["bg_panel"])
-        self.word_accuracy_frame.pack(fill=tk.X, pady=(8, 0))
-        self.word_accuracy_canvas = tk.Canvas(
-            self.word_accuracy_frame, height=28,
-            bg=C["bg_panel"], highlightthickness=0,
-        )
-        self.word_accuracy_canvas.pack(fill=tk.X)
-        self._accuracy_bar_ids = []
-        self._total_word_count = 0
-
-        legend = tk.Frame(left_frame, bg=C["bg_panel"])
-        legend.pack(fill=tk.X, pady=(4, 0))
-
-        for color, label in [(C["green"], "GOOD"), (C["yellow"], "FAIR"), (C["red"], "ERROR")]:
-            dot = tk.Canvas(
-                legend, width=10, height=10,
-                bg=C["bg_panel"], highlightthickness=0,
-            )
-            dot.pack(side=tk.RIGHT, padx=(0, 2))
-            draw_hex_indicator(dot, 5, 5, size=4, color=color)
-            tk.Label(
-                legend, text=label,
-                font=(FONT_FAMILY, 8),
-                bg=C["bg_panel"], fg=C["fg_dim"],
-            ).pack(side=tk.RIGHT, padx=(0, 6))
-
-        right_frame = tk.Frame(self, bg=C["bg_panel"])
-        right_frame.pack(side=tk.RIGHT, fill=tk.BOTH, expand=True, padx=(6, 12), pady=10)
-
-        right_header = tk.Frame(right_frame, bg=C["bg_panel"])
-        right_header.pack(fill=tk.X)
-
-        cvs2 = tk.Canvas(
-            right_header, width=16, height=16,
-            bg=C["bg_panel"], highlightthickness=0,
-        )
-        cvs2.pack(side=tk.LEFT)
-        draw_hex_indicator(cvs2, 8, 8, size=5, color=C["orange"])
-
-        tk.Label(
-            right_header, text="YOUR SPEECH  ·  你的跟读",
-            font=(FONT_FAMILY, 10, "bold"),
-            bg=C["bg_panel"], fg=C["fg_primary"],
-        ).pack(side=tk.LEFT, padx=(2, 0))
-
-        self.speed_indicator = tk.Label(
-            right_header, text="",
-            font=(FONT_FAMILY, 9, "bold"),
-            bg=C["bg_panel"], fg=C["fg_dim"],
-        )
-        self.speed_indicator.pack(side=tk.RIGHT, padx=(0, 2))
-
-        self.user_display = ctk.CTkTextbox(
-            right_frame, font=("Consolas", 14),
-            fg_color=C["bg_input"], text_color=C["cyan"],
-            border_width=1, border_color=C["orange_dim"],
-            corner_radius=2,
-            wrap="word", state="normal",
-        )
-        self.user_display.pack(fill=tk.BOTH, expand=True, pady=(6, 0))
-        self.user_display.tag_config("green_word", foreground=C["green"])
-        self.user_display.tag_config("yellow_word", foreground=C["yellow"])
-        self.user_display.tag_config("red_word", foreground=C["red"])
-        self.user_display.tag_config("low_conf", foreground=C["red"],
-                                      underline=True)
+        # ── BOTTOM: partial sentence + speed ──
+        bottom = tk.Frame(self, bg=C["bg_panel"])
+        bottom.pack(fill=tk.X, padx=12, pady=(6, 10))
 
         self.partial_label = tk.Label(
-            right_frame,
-            font=("Consolas", 12, "italic"),
+            bottom,
+            font=("Consolas", 13, "italic"),
             bg=C["bg_input"], fg=C["cyan"],
             anchor="w", justify=tk.LEFT,
             height=2,
+            relief=tk.FLAT,
+            borderwidth=1,
+            highlightbackground=C["cyan_dim"],
+            highlightcolor=C["cyan_dim"],
+            highlightthickness=1,
         )
-        self.partial_label.pack(fill=tk.X, pady=(4, 0))
+        self.partial_label.pack(fill=tk.X, pady=(0, 6))
 
-        detail_frame = tk.Frame(right_frame, bg=C["bg_panel"])
-        detail_frame.pack(fill=tk.X, pady=(8, 0))
+        status_row = tk.Frame(bottom, bg=C["bg_panel"])
+        status_row.pack(fill=tk.X)
 
-        self.detail_text = ctk.CTkTextbox(
-            detail_frame, font=("Consolas", 10),
-            fg_color=C["bg_card"],
-            text_color=C["fg_secondary"],
-            border_width=1, border_color=C["fg_dim"],
-            corner_radius=2,
-            wrap="word", state="normal", height=65,
+        self.speed_indicator = tk.Label(
+            status_row, text="",
+            font=(FONT_FAMILY, 9, "bold"),
+            bg=C["bg_panel"], fg=C["fg_dim"],
         )
-        self.detail_text.pack(fill=tk.BOTH)
+        self.speed_indicator.pack(side=tk.LEFT)
+
+        self.detail_text = ctk.CTkLabel(
+            status_row, text="",
+            font=(FONT_FAMILY, 9),
+            text_color=C["fg_dim"],
+        )
+        self.detail_text.pack(side=tk.RIGHT)
+
+    # ──────────────────────────────────────────────
+    #  Public API
+    # ──────────────────────────────────────────────
 
     def init_ref_display(self, reference_words: list):
+        """Call once when shadowing starts."""
         self.ref_display.delete("1.0", tk.END)
         self._ref_word_positions = []
         self._current_ref_idx = -1
-        self._last_user_word_count = 0
+        self._shadowing_idx = -1
+        self._shadowed_words = {}
         self._last_partial = ""
 
         for word in reference_words:
@@ -153,32 +120,13 @@ class DisplayPanel(ctk.CTkFrame):
             end = len(self.ref_display.get("1.0", tk.END)) - 1
             self._ref_word_positions.append((start, end))
 
-        mask = self.app.comparator._word_mask if self.app.comparator else []
-        word_count = sum(mask) if mask else len(reference_words)
-        self._init_accuracy_bars(word_count)
-
-    def _init_accuracy_bars(self, total: int):
-        self.word_accuracy_canvas.delete("all")
-        self._accuracy_bar_ids = []
-        self._total_word_count = total
-
-        canvas_w = self.word_accuracy_canvas.winfo_width()
-        if canvas_w < 50:
-            canvas_w = 400
-        h = 22
-        n = max(total, 1)
-        bar_w = max(canvas_w // n, 2)
-
-        for i in range(total):
-            x0 = i * bar_w
-            x1 = x0 + bar_w - 2
-            rid = self.word_accuracy_canvas.create_rectangle(
-                x0, 3, x1, h,
-                fill=C["fg_dim"], outline="",
-            )
-            self._accuracy_bar_ids.append(rid)
+        self.partial_label.configure(text="")
+        self.score_label.configure(text="")
+        self.speed_indicator.configure(text="")
+        self.detail_text.configure(text="")
 
     def update_ref_highlight(self):
+        """Move the audio playback cursor (called every 100ms)."""
         if not self.app.comparator or not self.app._is_running:
             return
 
@@ -189,43 +137,123 @@ class DisplayPanel(ctk.CTkFrame):
             return
 
         for i, (start, end) in enumerate(self._ref_word_positions):
-            tag = "past" if i < current_idx else ("current" if i == current_idx else "future")
-            self.ref_display.tag_remove("past", f"1.0+{start}c", f"1.0+{end}c")
-            self.ref_display.tag_remove("current", f"1.0+{start}c", f"1.0+{end}c")
-            self.ref_display.tag_remove("future", f"1.0+{start}c", f"1.0+{end}c")
-            self.ref_display.tag_add(tag, f"1.0+{start}c", f"1.0+{end}c")
+            # Don't override shadowing colors with audio cursor colors
+            if i in self._shadowed_words:
+                continue
+            if i == current_idx:
+                self.ref_display.tag_remove("past", f"1.0+{start}c", f"1.0+{end}c")
+                self.ref_display.tag_remove("future", f"1.0+{start}c", f"1.0+{end}c")
+                self.ref_display.tag_add("audio_cur", f"1.0+{start}c", f"1.0+{end}c")
+            elif i < current_idx:
+                self.ref_display.tag_remove("audio_cur", f"1.0+{start}c", f"1.0+{end}c")
+                self.ref_display.tag_remove("future", f"1.0+{start}c", f"1.0+{end}c")
+                self.ref_display.tag_add("past", f"1.0+{start}c", f"1.0+{end}c")
+            else:
+                self.ref_display.tag_remove("past", f"1.0+{start}c", f"1.0+{end}c")
+                self.ref_display.tag_remove("audio_cur", f"1.0+{start}c", f"1.0+{end}c")
+                self.ref_display.tag_add("future", f"1.0+{start}c", f"1.0+{end}c")
 
         self._current_ref_idx = current_idx
-
         if current_idx < len(self._ref_word_positions):
             start, _ = self._ref_word_positions[current_idx]
             self.ref_display.see(f"1.0+{start}c")
 
-    def update_user_display(self, recognized_words, accuracy_result):
-        breakdown = accuracy_result.get("breakdown", [])
+    def update_shadowing(self, partial_text: str, audio_position: float):
+        """Process new partial text & advance shadowing cursor.
 
-        # Insert only NEW words since last update (never delete)
-        new_count = len(breakdown)
-        for i in range(self._last_user_word_count, new_count):
-            item = breakdown[i]
-            word = item.get("user_word", "")
-            if word:
-                if i < len(recognized_words) and recognized_words[i].get("conf", 1.0) < 0.7:
-                    self.user_display.insert(tk.END, word + "* ", "low_conf")
-                else:
-                    color_tag = f"{item.get('color', '')}_word"
-                    self.user_display.insert(tk.END, word + " ", color_tag)
-
-        self._last_user_word_count = new_count
-
-        # Show partial text in a separate label (never touches the textbox)
-        partial = self.app.speech_recognizer.partial_text
-        if partial:
-            self.partial_label.configure(text=f"▎ {partial}")
-        else:
+        Called every 100ms from the update loop.
+        """
+        if not partial_text or not partial_text.strip():
             self.partial_label.configure(text="")
+            self._last_partial = ""
+            return
 
-        self.user_display.see(tk.END)
+        self.partial_label.configure(text=f"▎ {partial_text}")
+
+        # Tokenize the partial text to get words
+        partial_words = re.findall(r"[a-zA-Z']+", partial_text.strip().lower())
+
+        # Check if we have a NEW word compared to last partial
+        if not partial_words:
+            return
+
+        latest = partial_words[-1]
+        prev_words = re.findall(r"[a-zA-Z']+", self._last_partial.strip().lower()) if self._last_partial else []
+        is_new = (not prev_words) or (len(partial_words) > len(prev_words)) or (
+            latest != (prev_words[-1] if prev_words else "")
+        )
+
+        if not is_new:
+            self._last_partial = partial_text
+            return
+
+        self._last_partial = partial_text
+
+        # Look for the new word in reference text, starting from shadowing_idx + 1
+        if not hasattr(self.app, "comparator") or not self.app.comparator:
+            return
+
+        ref_words = self.app.comparator.reference_words
+        if not ref_words:
+            return
+
+        start_search = max(0, self._shadowing_idx + 1)
+        end_search = min(len(ref_words), start_search + 3)  # look at 3 words ahead (current + 2)
+
+        match_idx = -1
+        for i in range(start_search, end_search):
+            if i < len(ref_words) and ref_words[i].lower() == latest:
+                match_idx = i
+                break
+
+        if match_idx < 0:
+            return
+
+        # Move shadowing cursor
+        self._shadowing_idx = match_idx
+
+        # Check timing against reference audio timestamp
+        threshold = 3.0
+        try:
+            from src.utils.config import get_config
+            cfg = get_config()
+            threshold = cfg.get("training", {}).get("shadowing_timeout", 3.0)
+        except Exception:
+            pass
+
+        # Get the word timestamp from comparator
+        timing = self.app.comparator._word_timings
+        word_time = 0.0
+        if timing and match_idx < len(timing):
+            word_time = timing[match_idx].get("start", 0.0)
+
+        diff = abs(word_time - audio_position)
+        is_green = diff <= threshold
+
+        # Highlight the matched word
+        self._shadowed_words[match_idx] = "green" if is_green else "red"
+
+        if match_idx < len(self._ref_word_positions):
+            start, end = self._ref_word_positions[match_idx]
+            # Remove audio cursor / future / past tags from this word
+            self.ref_display.tag_remove("past", f"1.0+{start}c", f"1.0+{end}c")
+            self.ref_display.tag_remove("audio_cur", f"1.0+{start}c", f"1.0+{end}c")
+            self.ref_display.tag_remove("future", f"1.0+{start}c", f"1.0+{end}c")
+            # Apply shadowing color
+            tag = "shadow_match" if is_green else "shadow_miss"
+            self.ref_display.tag_add(tag, f"1.0+{start}c", f"1.0+{end}c")
+
+        # Update score display
+        self._update_score()
+
+    def _update_score(self):
+        green = sum(1 for v in self._shadowed_words.values() if v == "green")
+        red = sum(1 for v in self._shadowed_words.values() if v == "red")
+        total = green + red
+        pct = (green / total * 100) if total > 0 else 0
+        self.score_label.configure(
+            text=f"G:{green}  R:{red}  {pct:.0f}%"
+        )
 
     def update_speed_info(self, speed_result: dict):
         msg = speed_result.get("message", "")
@@ -239,31 +267,7 @@ class DisplayPanel(ctk.CTkFrame):
         else:
             self.speed_indicator.configure(text="", fg=C["fg_dim"])
 
-    def update_detail(self, recognized_words, accuracy_result):
-        self.detail_text.delete("1.0", tk.END)
-
-        total = len(recognized_words)
-        low_conf = sum(1 for w in recognized_words if w.get("conf", 1.0) < 0.7) if total > 0 else 0
-        avg_conf = sum(w.get("conf", 0) for w in recognized_words) / max(total, 1)
-
-        self.detail_text.insert(
-            tk.END,
-            f"PROGRESS: {self.app.audio_player.position:.1f}s / {self.app.audio_player.duration:.1f}s\n"
-            f"WORDS DETECTED: {total}  |  REF POS: #{accuracy_result.get('ref_index', 0)}\n"
-            f"CONFIDENCE: {avg_conf:.0%}  |  LOW-CONF WORDS: {low_conf}{' WARNING' if low_conf > 0 else ''}\n",
-        )
-
-    def update_word_accuracy_bars(self, result: dict):
-        breakdown = result.get("breakdown", [])
-        color_map = {
-            "green": C["green"],
-            "yellow": C["yellow"],
-            "red": C["red"],
-        }
-        for i, item in enumerate(breakdown):
-            if i >= len(self._accuracy_bar_ids):
-                break
-            fill = color_map.get(item.get("color", ""), C["fg_dim"])
-            self.word_accuracy_canvas.itemconfig(
-                self._accuracy_bar_ids[i], fill=fill
-            )
+    def get_shadowing_score(self) -> dict:
+        green = sum(1 for v in self._shadowed_words.values() if v == "green")
+        red = sum(1 for v in self._shadowed_words.values() if v == "red")
+        return {"green": green, "red": red, "total": green + red}

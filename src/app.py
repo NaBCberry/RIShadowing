@@ -707,7 +707,13 @@ class ShadowingApp:
             accuracy_result = self.comparator.compare_accuracy(recognized_words, ref_elapsed)
             score = accuracy_result.get("score", 0.0)
 
-            print(f"[App] practice finished. recognized words: {len(recognized_words)}, accuracy: {score:.0%}")
+            shadowing = self.display_panel.get_shadowing_score()
+            s_green = shadowing.get("green", 0)
+            s_red = shadowing.get("red", 0)
+            s_total = shadowing.get("total", 0)
+            s_score = s_green / max(s_total, 1)
+
+            print(f"[App] practice finished. shadowing: G={s_green} R={s_red} ({s_score:.0%})")
             for w in recognized_words[:5]:
                 print(f"  [{w['word']}] conf={w['conf']:.2f}")
 
@@ -715,22 +721,10 @@ class ShadowingApp:
             if review_words:
                 review_list = "  ".join(w["word"] for w in review_words[:8])
                 print(f"[App] review suggestions: {review_list}")
-                try:
-                    self.display_panel.detail_text.configure(state="normal")
-                    self.display_panel.detail_text.insert(
-                        tk.END,
-                        f"\nREVIEW: {review_list}\n"
-                        f"(Underlined words have low confidence — practice recommended)",
-                    )
-                    self.display_panel.detail_text.configure(state="disabled")
-                except Exception:
-                    pass
 
             self._final_status = (
-                f"TRAINING COMPLETE! ACCURACY: {score:.0%} | "
-                f"G:{accuracy_result.get('green_count', 0)} "
-                f"Y:{accuracy_result.get('yellow_count', 0)} "
-                f"R:{accuracy_result.get('red_count', 0)}"
+                f"SHADOWING SCORE: {s_score:.0%}  "
+                f"G:{s_green}  R:{s_red}"
             )
             self.set_training_status(self._final_status)
             self._awaiting_return = True
@@ -746,10 +740,8 @@ class ShadowingApp:
             if mid:
                 try:
                     record_practice(
-                        mid, score,
-                        accuracy_result.get("green_count", 0),
-                        accuracy_result.get("yellow_count", 0),
-                        accuracy_result.get("red_count", 0),
+                        mid, s_score,
+                        s_green, 0, s_red,
                         self.audio_player.duration,
                     )
                     self.material_panel._refresh()
@@ -773,16 +765,17 @@ class ShadowingApp:
         if self.comparator and self._is_running:
             recognized_words = self.speech_recognizer.get_latest_words()
             ref_elapsed = self.audio_player.position
+            partial = self.speech_recognizer.partial_text
 
             speed_result = self.comparator.compare_speed(recognized_words, ref_elapsed)
             self.feedback_panel.update_speed(speed_result)
+            self.display_panel.update_speed_info(speed_result)
 
             accuracy_result = self.comparator.compare_accuracy(recognized_words, ref_elapsed)
             self.feedback_panel.update_accuracy(accuracy_result)
             self.display_panel.update_word_accuracy_bars(accuracy_result)
-            self.display_panel.update_user_display(recognized_words, accuracy_result)
-            self.display_panel.update_speed_info(speed_result)
-            self.display_panel.update_detail(recognized_words, accuracy_result)
+
+            self.display_panel.update_shadowing(partial, ref_elapsed)
 
         self.display_panel.update_ref_highlight()
         self.root.after(100, self._update_loop)

@@ -48,6 +48,7 @@ class SettingsDialog(ctk.CTkToplevel):
 
         self._build_update_section(body)
         self._build_countdown_section(body)
+        self._build_shadowing_section(body)
         self._build_debug_section(body)
         self._build_dev_section(body)
 
@@ -269,6 +270,83 @@ class SettingsDialog(ctk.CTkToplevel):
                 messagebox.showwarning("PERMISSION",
                     "无法写入配置文件（安装目录只读）。\n"
                     "倒计时设置将在本次会话中生效，但重启后会恢复默认值。")
+        except ValueError:
+            messagebox.showwarning("INVALID", "请输入有效数字")
+
+    def _build_shadowing_section(self, body):
+        section = ctk.CTkFrame(body, fg_color=C["bg_card"])
+        section.pack(fill=tk.X, pady=(0, 8))
+
+        header = tk.Frame(section, bg=C["bg_card"])
+        header.pack(fill=tk.X, padx=10, pady=(8, 2))
+
+        cvs = tk.Canvas(header, width=14, height=14, bg=C["bg_card"], highlightthickness=0)
+        cvs.pack(side=tk.LEFT)
+        draw_hex_indicator(cvs, 7, 7, size=5, color=C["orange"], filled=False)
+
+        tk.Label(
+            header, text="SHADOWING  ·  跟读评分",
+            font=(FONT_FAMILY, 11, "bold"),
+            bg=C["bg_card"], fg=C["fg_primary"],
+        ).pack(side=tk.LEFT, padx=(4, 0))
+
+        row = tk.Frame(section, bg=C["bg_card"])
+        row.pack(fill=tk.X, padx=10, pady=(4, 8))
+
+        tk.Label(
+            row, text="时间容差 (0.5-10s):",
+            font=(FONT_FAMILY, 10),
+            bg=C["bg_card"], fg=C["fg_secondary"],
+        ).pack(side=tk.LEFT)
+
+        from src.utils.config import get_config
+        cfg = get_config()
+        current = cfg.get("training", {}).get("shadowing_timeout", 3.0)
+
+        self._shadowing_var = tk.StringVar(value=str(current))
+        ctk.CTkEntry(
+            row,
+            textvariable=self._shadowing_var,
+            font=(FONT_FAMILY, 10),
+            fg_color=C["bg_input"],
+            text_color=C["fg_primary"],
+            border_width=1,
+            border_color=C["fg_dim"],
+            corner_radius=2,
+            width=80,
+        ).pack(side=tk.LEFT, padx=(8, 0))
+
+        ctk.CTkButton(
+            row, text="SAVE",
+            font=(FONT_FAMILY, 9, "bold"),
+            fg_color=C["cyan_dim"],
+            hover_color=C["cyan"],
+            text_color=C["fg_primary"],
+            border_width=1,
+            border_color=C["cyan_dim"],
+            corner_radius=2,
+            width=60, height=26,
+            command=self._save_shadowing,
+        ).pack(side=tk.RIGHT, padx=(8, 0))
+
+    def _save_shadowing(self):
+        try:
+            val = float(self._shadowing_var.get())
+            val = max(0.5, min(val, 10.0))
+            from src.utils.config import get_config
+            import json
+            from src.utils.paths import get_config_path
+            cfg = get_config()
+            cfg.setdefault("training", {})["shadowing_timeout"] = val
+
+            try:
+                with open(get_config_path(), "w", encoding="utf-8") as f:
+                    json.dump(cfg, f, ensure_ascii=False, indent=2)
+                messagebox.showinfo("SAVED", f"时间容差已设为 {val:.1f} 秒，下次开始跟读时生效")
+            except PermissionError:
+                messagebox.showwarning("PERMISSION",
+                    "无法写入配置文件（安装目录只读）。\n"
+                    "设置将在本次会话中生效，但重启后会恢复默认值。")
         except ValueError:
             messagebox.showwarning("INVALID", "请输入有效数字")
 
