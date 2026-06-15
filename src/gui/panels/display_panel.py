@@ -12,6 +12,8 @@ class DisplayPanel(ctk.CTkFrame):
         self._current_ref_idx = -1
         self._shadowing_idx = -1
         self._shadowed_words = {}    # {index: "green"|"red"}
+        self._sample_idx = -1         # blue pacing cursor index
+        self._last_sample_idx = -1
         self._last_partial = ""
         self._build()
 
@@ -63,6 +65,8 @@ class DisplayPanel(ctk.CTkFrame):
         # Tags for shadowing cursor (which word the USER is on)
         self.ref_display.tag_config("shadow_match", foreground=C["green"])
         self.ref_display.tag_config("shadow_miss", foreground=C["red"])
+        self.ref_display.tag_config("sample_cur", foreground="#ffffff",
+                                     background="#004488")
         self.ref_display.tag_config("shadow_cur", foreground="#ffffff",
                                      background="#0066aa")
 
@@ -112,6 +116,8 @@ class DisplayPanel(ctk.CTkFrame):
         self._current_ref_idx = -1
         self._shadowing_idx = -1
         self._shadowed_words = {}
+        self._sample_idx = -1
+        self._last_sample_idx = -1
         self._last_partial = ""
 
         for word in reference_words:
@@ -154,6 +160,31 @@ class DisplayPanel(ctk.CTkFrame):
         if current_idx < len(self._ref_word_positions):
             start, _ = self._ref_word_positions[current_idx]
             self.ref_display.see(f"1.0+{start}c")
+
+        # ── Blue sample cursor: audio position minus timeout ──
+        if not self.app.comparator:
+            return
+        threshold = 3.0
+        try:
+            from src.utils.config import get_config
+            threshold = get_config().get("training", {}).get("shadowing_timeout", 3.0)
+        except Exception:
+            pass
+
+        sample_pos = max(0, ref_elapsed - threshold)
+        self._sample_idx = self.app.comparator.get_current_ref_word_index(sample_pos)
+
+        if self._sample_idx != self._last_sample_idx:
+            # Remove old sample tag
+            if self._last_sample_idx >= 0 and self._last_sample_idx < len(self._ref_word_positions):
+                s_start, s_end = self._ref_word_positions[self._last_sample_idx]
+                self.ref_display.tag_remove("sample_cur", f"1.0+{s_start}c", f"1.0+{s_end}c")
+            # Add new sample tag (unless shadowed)
+            if self._sample_idx >= 0 and self._sample_idx < len(self._ref_word_positions):
+                if self._sample_idx not in self._shadowed_words:
+                    s_start, s_end = self._ref_word_positions[self._sample_idx]
+                    self.ref_display.tag_add("sample_cur", f"1.0+{s_start}c", f"1.0+{s_end}c")
+            self._last_sample_idx = self._sample_idx
 
     def update_shadowing(self, partial_text: str, audio_position: float):
         """Process new partial text & advance shadowing cursor.
