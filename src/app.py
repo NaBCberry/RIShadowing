@@ -233,8 +233,49 @@ class ShadowingApp:
     def _build_training_screen(self):
         self.training_screen = ctk.CTkFrame(self.root, fg_color="transparent")
 
-        main = ctk.CTkFrame(self.training_screen, fg_color="transparent")
-        main.pack(fill=tk.BOTH, expand=True, padx=14, pady=(6, 0))
+        # ── Horizontal body: level meter | content ──
+        body = tk.Frame(self.training_screen, bg=C["bg_dark"])
+        body.pack(fill=tk.BOTH, expand=True, padx=(6, 14), pady=(6, 0))
+        body.grid_columnconfigure(1, weight=1)
+        body.grid_rowconfigure(0, weight=1)
+
+        # ── LEFT: vertical level meter ──
+        meter_frame = tk.Frame(body, bg=C["bg_panel"], width=36)
+        meter_frame.grid(row=0, column=0, sticky="ns", padx=(0, 6))
+        meter_frame.pack_propagate(False)
+
+        # top accent line
+        mt = tk.Canvas(meter_frame, height=2, bg=C["bg_panel"], highlightthickness=0)
+        mt.pack(fill=tk.X)
+        mt.create_line(0, 0, 9999, 0, fill=C["cyan_dim"], width=1)
+
+        self.level_canvas = tk.Canvas(
+            meter_frame, width=24, bg=C["bg_input"],
+            highlightthickness=1, highlightbackground=C["fg_dim"],
+        )
+        self.level_canvas.pack(fill=tk.BOTH, expand=True, padx=5, pady=(6, 6))
+
+        self._level_bar = self.level_canvas.create_rectangle(
+            0, 0, 0, 0, fill=C["green"], outline="",
+        )
+        self._level_glow = self.level_canvas.create_rectangle(
+            0, 0, 0, 0, fill=C["green"], outline="", stipple="gray50",
+        )
+
+        # bottom accent line
+        mb = tk.Canvas(meter_frame, height=2, bg=C["bg_panel"], highlightthickness=0)
+        mb.pack(fill=tk.X)
+        mb.create_line(0, 0, 9999, 0, fill=C["cyan_dim"], width=1)
+
+        # ── RIGHT: main content ──
+        right = tk.Frame(body, bg=C["bg_dark"])
+        right.grid(row=0, column=1, sticky="nsew")
+        right.grid_rowconfigure(0, weight=1)
+        right.grid_rowconfigure(1, weight=0)
+        right.grid_columnconfigure(0, weight=1)
+
+        main = ctk.CTkFrame(right, fg_color="transparent")
+        main.grid(row=0, column=0, sticky="nsew")
 
         self.feedback_panel = FeedbackPanel(main, self)
         self.feedback_panel.pack(fill=tk.X, pady=(0, 8))
@@ -249,8 +290,8 @@ class ShadowingApp:
             bg=C["bg_dark"],
         )
 
-        bottom = ctk.CTkFrame(self.training_screen, fg_color=C["bg_panel"])
-        bottom.pack(fill=tk.X, side=tk.BOTTOM, padx=14, pady=(0, 10))
+        bottom = ctk.CTkFrame(right, fg_color=C["bg_panel"])
+        bottom.grid(row=1, column=0, sticky="ew", pady=(0, 10))
 
         top_line = tk.Canvas(
             bottom, height=2, bg=C["bg_panel"], highlightthickness=0,
@@ -302,6 +343,7 @@ class ShadowingApp:
     def _show_training(self):
         self.setup_screen.pack_forget()
         self.training_screen.pack(fill=tk.BOTH, expand=True)
+        self._reset_level_meter()
 
     def set_status(self, text):
         self.setup_status.configure(text=text)
@@ -752,6 +794,47 @@ class ShadowingApp:
             traceback.print_exc()
             self._finish_transition("TERMINATED")
 
+    def _reset_level_meter(self):
+        """Zero out the level meter bar."""
+        if not hasattr(self, "level_canvas") or not self.level_canvas.winfo_exists():
+            return
+        self.level_canvas.coords(self._level_bar, 0, 0, 0, 0)
+        self.level_canvas.coords(self._level_glow, 0, 0, 0, 0)
+
+    def _update_level_meter(self):
+        """Draw the vertical level meter bar."""
+        if not hasattr(self, "level_canvas") or not self.level_canvas.winfo_exists():
+            return
+        try:
+            level = self.audio_recorder.current_level if self.audio_recorder else 0.0
+        except Exception:
+            level = 0.0
+
+        w = self.level_canvas.winfo_width()
+        h = self.level_canvas.winfo_height()
+        if w < 10 or h < 10:
+            return
+
+        bar_h = int(level * h * 2.5)
+        bar_h = min(bar_h, h)
+
+        if level > 0.85:
+            color = C["red"]
+        elif level > 0.5:
+            color = C["yellow"]
+        else:
+            color = C["green"]
+
+        # bar grows from bottom: x1,y1,x2,y2 — y1 = top, y2 = bottom
+        y_top = h - bar_h
+        self.level_canvas.coords(self._level_bar, 4, y_top, w - 4, h)
+        self.level_canvas.itemconfig(self._level_bar, fill=color)
+
+        glow_h = min(bar_h + 6, h)
+        glow_top = h - glow_h
+        self.level_canvas.coords(self._level_glow, w // 2 - 3, glow_top, w // 2 + 3, h)
+        self.level_canvas.itemconfig(self._level_glow, fill=color)
+
     def _update_loop(self):
         if not self._is_running:
             return
@@ -773,6 +856,7 @@ class ShadowingApp:
             sample_done = self.display_panel.update_sample_cursor(ref_elapsed)
 
         self.display_panel.update_ref_highlight()
+        self._update_level_meter()
 
         if sample_done:
             self._on_practice_finished()
