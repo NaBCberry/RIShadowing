@@ -773,7 +773,6 @@ class ShadowingApp:
 
             accuracy_result = self.comparator.compare_accuracy(recognized_words, ref_elapsed)
             self.feedback_panel.update_accuracy(accuracy_result)
-            self.display_panel.update_word_accuracy_bars(accuracy_result)
 
             self.display_panel.update_shadowing(partial, ref_elapsed)
 
