@@ -110,10 +110,10 @@
 | `src/gui/panels/device_panel.py` | 设备选择 + 画布实时电平表（绿/黄/红发光效果） |
 | `src/gui/panels/input_panel.py` | 文本输入区 + TTS 引擎选择 + 文件加载 + Whisper 精密转写按钮 |
 | `src/gui/panels/feedback_panel.py` | 语速/准确率实时仪表盘（Canvas 水平进度条 + 发光效果）——仅训练屏可见 |
-| `src/gui/panels/display_panel.py` | 富文本展示区：左栏参考文本逐词高亮+准确率色条，右栏用户实时识别文本+低置信度标记，底部详细统计——仅训练屏可见 |
+| `src/gui/panels/display_panel.py` | 参考文本逐词高亮：音频光标（蓝底）→ 跟读样本光标（黄底）→ 用户匹配词按距离着色（绿≤1词/黄≤3词/红≤5词），底部 partial_label 显示实时识别+速度指示 |
 | `src/gui/panels/material_panel.py` | 素材库面板：可折叠、可搜索、CRUD 弹窗——仅设置屏可见 |
 | `src/gui/panels/download_dialog.py` | 模型下载弹窗：启动时未找到模型时弹出，可选小/大模型，显示下载+解压进度条 |
-| `src/gui/panels/settings_dialog.py` | 设置窗口：倒计时秒数配置 + 开发人员选项（手动触发各错误码诊断弹窗） |
+| `src/gui/panels/settings_dialog.py` | 设置窗口：倒计时秒数 + 跟读匹配距离阈值（绿/黄/红） + 跟读滞后时间 + 更新检查 + 调试/开发选项 |
 
 ### 构建文件
 
@@ -189,7 +189,7 @@ main.py ──► ShadowingApp (src/app.py)
 麦克风 ──► AudioRecorder ──► queue.Queue ──► SpeechRecognizer (Vosk)
                                                     │
                                                     ▼
-                                           recognized_words[]
+                                           partial_text[]
                                                     │
 参考音频 ──► AudioPlayer ──► position ──────────────┤
               │                                      │
@@ -200,7 +200,8 @@ main.py ──► ShadowingApp (src/app.py)
               │                    │
               ▼                    ▼
        FeedbackPanel          DisplayPanel
-      (语速/准确率仪表)     (逐词高亮 + 用户文本 + 详情)
+      (语速/准确率仪表)     (逐词高亮着色：以黄色样本光标为中心
+                             按词距分绿/黄/红 + 底部 partial 文本)
 ```
 
 ---
@@ -245,7 +246,7 @@ main.py ──► ShadowingApp (src/app.py)
 - [x] 参考音频播放（分块流式）
 - [x] 麦克风实时录音 + Vosk 实时语音识别
 - [x] 语速比对（绿/黄/红三色指示）
-- [x] 发音准确率评分（`SequenceMatcher` 逐词比对）
+- [x] 跟读逐词匹配评分：以黄色样本光标为中心，按词距分三色（绿≤1词 / 黄≤3词 / 红≤5词，阈值可调），优先匹配近处词
 - [x] 参考文本逐词高亮（当前词/已读/未读）
 - [x] 用户识别文本实时展示（逐词置信度下划线+色标）
 - [x] 低置信度词星标 + 训练后复习列表

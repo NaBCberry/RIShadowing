@@ -12,7 +12,7 @@ class DisplayPanel(ctk.CTkFrame):
         self._ref_word_positions = []
         self._current_ref_idx = -1
         self._shadowing_idx = -1
-        self._shadowed_words = {}    # {index: "green"|"red"}
+        self._shadowed_words = {}    # {index: "green"|"yellow"|"red"}
         self._sample_idx = -1         # blue pacing cursor index
         self._last_sample_idx = -1
         self._sample_start_time = None  # when the independent timer started
@@ -66,11 +66,12 @@ class DisplayPanel(ctk.CTkFrame):
         self.ref_display.tag_config("future", foreground="#666680")
         # Tags for shadowing cursor (which word the USER is on)
         self.ref_display.tag_config("shadow_match", foreground=C["green"])
+        self.ref_display.tag_config("shadow_medium", foreground=C["yellow"])
         self.ref_display.tag_config("shadow_miss", foreground=C["red"])
         self.ref_display.tag_config("sample_cur", foreground="#ffffff",
-                                     background="#004488")
+                                      background="#aa8800")
         self.ref_display.tag_config("shadow_cur", foreground="#ffffff",
-                                     background="#0066aa")
+                                      background="#0066aa")
 
         # ── BOTTOM: partial sentence + speed ──
         bottom = tk.Frame(self, bg=C["bg_panel"])
@@ -88,7 +89,36 @@ class DisplayPanel(ctk.CTkFrame):
             highlightcolor=C["cyan_dim"],
             highlightthickness=1,
         )
-        self.partial_label.pack(fill=tk.X, pady=(0, 6))
+        self.partial_label.pack(fill=tk.X, pady=(0, 4))
+
+        # ── Legend: colour / cursor meanings ──
+        legend = tk.Frame(bottom, bg=C["bg_panel"])
+        legend.pack(fill=tk.X, pady=(0, 6))
+
+        # Row 1: colour dots
+        d1 = tk.Frame(legend, bg=C["bg_panel"])
+        d1.pack(fill=tk.X)
+
+        self._make_dot(d1, C["green"], "精准", "匹配距光标 ≤1词")
+        self._make_dot(d1, C["yellow"], "稍偏", "匹配距光标 ≤3词")
+        self._make_dot(d1, C["red"], "偏差", "匹配距光标 ≤5词")
+
+        sep1 = tk.Label(d1, text="│", font=(FONT_FAMILY, 13),
+                        bg=C["bg_panel"], fg=C["fg_dim"])
+        sep1.pack(side=tk.LEFT, padx=(6, 2))
+
+        self._make_dot(d1, "#aa8800", "跟读光标", "黄底=应跟读到的参考词", bg=True)
+        self._make_dot(d1, "#004466", "音频光标", "蓝底=音频当前播放词", bg=True)
+
+        # Row 2: short guide
+        d2 = tk.Frame(legend, bg=C["bg_panel"])
+        d2.pack(fill=tk.X, pady=(2, 0))
+        tk.Label(
+            d2, text="跟读指南：跟随黄色光标朗读，优先匹配离光标近的参考词，保持与音频播放节奏一致",
+            font=(FONT_FAMILY, 15),
+            bg=C["bg_panel"], fg=C["fg_dim"],
+            anchor="w",
+        ).pack(side=tk.LEFT)
 
         status_row = tk.Frame(bottom, bg=C["bg_panel"])
         status_row.pack(fill=tk.X)
@@ -110,6 +140,24 @@ class DisplayPanel(ctk.CTkFrame):
     # ──────────────────────────────────────────────
     #  Public API
     # ──────────────────────────────────────────────
+
+    @staticmethod
+    def _make_dot(parent, color, label, tooltip, bg=False):
+        """Add a coloured indicator dot + label to *parent*."""
+        size = 14
+        cvs = tk.Canvas(parent, width=size, height=size,
+                        bg=C["bg_panel"], highlightthickness=0)
+        cvs.pack(side=tk.LEFT, padx=(6, 1))
+        if bg:
+            cvs.create_rectangle(0, 0, size, size, fill=color, outline="")
+        else:
+            cvs.create_oval(2, 2, size-2, size-2, fill=color, outline="")
+        tk.Label(parent, text=f"{label}",
+                 font=(FONT_FAMILY, 13),
+                 bg=C["bg_panel"], fg=color).pack(side=tk.LEFT)
+        tk.Label(parent, text=f"({tooltip})",
+                 font=(FONT_FAMILY, 13),
+                 bg=C["bg_panel"], fg=C["fg_dim"]).pack(side=tk.LEFT, padx=(0, 4))
 
     def init_ref_display(self, reference_words: list):
         """Call once when shadowing starts."""
@@ -216,9 +264,14 @@ class DisplayPanel(ctk.CTkFrame):
         return finished
 
     def update_shadowing(self, partial_text: str, audio_position: float):
-        """Process new partial text & advance shadowing cursor.
+        """Match spoken words against reference text around the yellow sample cursor.
 
-        Called every 100ms from the update loop.
+        For each new spoken word, search within ±match_red_distance around
+        the sample cursor.  The closest matching reference word wins.
+        Colour is determined by distance:
+          ≤ match_green_distance  → green  (shadow_match)
+          ≤ match_yellow_distance → yellow (shadow_medium)
+          ≤ match_red_distance    → red    (shadow_miss)
         """
         if not partial_text or not partial_text.strip():
             self.partial_label.configure(text="")
@@ -227,89 +280,90 @@ class DisplayPanel(ctk.CTkFrame):
 
         self.partial_label.configure(text=f"▎ {partial_text}")
 
-        # Tokenize the partial text to get words
         partial_words = re.findall(r"[a-zA-Z']+", partial_text.strip().lower())
-
-        # Check if we have a NEW word compared to last partial
         if not partial_words:
             return
 
-        latest = partial_words[-1]
         prev_words = re.findall(r"[a-zA-Z']+", self._last_partial.strip().lower()) if self._last_partial else []
-        is_new = (not prev_words) or (len(partial_words) > len(prev_words)) or (
-            latest != (prev_words[-1] if prev_words else "")
+        new_words = partial_words[len(prev_words):] if len(partial_words) > len(prev_words) else (
+            partial_words if partial_words != prev_words else []
         )
-
-        if not is_new:
-            self._last_partial = partial_text
+        self._last_partial = partial_text
+        if not new_words:
             return
 
-        self._last_partial = partial_text
-
-        # Look for the new word in reference text, starting from shadowing_idx + 1
         if not hasattr(self.app, "comparator") or not self.app.comparator:
             return
-
         ref_words = self.app.comparator.reference_words
         if not ref_words:
             return
 
-        start_search = max(0, self._shadowing_idx + 1)
-        end_search = min(len(ref_words), start_search + 3)  # look at 3 words ahead (current + 2)
-
-        match_idx = -1
-        for i in range(start_search, end_search):
-            if i < len(ref_words) and ref_words[i].lower() == latest:
-                match_idx = i
-                break
-
-        if match_idx < 0:
-            return
-
-        # Move shadowing cursor
-        self._shadowing_idx = match_idx
-
-        # Check timing against reference audio timestamp
-        threshold = 3.0
+        green_dist = 1
+        yellow_dist = 3
+        red_dist = 5
         try:
             from src.utils.config import get_config
-            cfg = get_config()
-            threshold = cfg.get("training", {}).get("shadowing_timeout", 3.0)
+            cfg = get_config().get("training", {})
+            green_dist = int(cfg.get("match_green_distance", 1))
+            yellow_dist = int(cfg.get("match_yellow_distance", 3))
+            red_dist = int(cfg.get("match_red_distance", 5))
         except Exception:
             pass
 
-        # Get the word timestamp from comparator
-        timing = self.app.comparator._word_timings
-        word_time = 0.0
-        if timing and match_idx < len(timing):
-            word_time = timing[match_idx].get("start", 0.0)
+        cursor = max(0, self._sample_idx)
+        search_radius = max(green_dist, yellow_dist, red_dist)
+        lo = max(0, cursor - search_radius)
+        hi = min(len(ref_words), cursor + search_radius + 1)
 
-        diff = abs(word_time - audio_position)
-        is_green = diff <= threshold
+        changed = False
+        for new_w in new_words:
+            candidates = []
+            for i in range(lo, hi):
+                if i in self._shadowed_words:
+                    continue
+                if ref_words[i].lower() == new_w:
+                    dist = abs(i - cursor)
+                    candidates.append((dist, i))
+            if not candidates:
+                continue
+            candidates.sort(key=lambda x: x[0])
+            dist, match_idx = candidates[0]
 
-        # Highlight the matched word
-        self._shadowed_words[match_idx] = "green" if is_green else "red"
+            if dist <= green_dist:
+                color = "green"
+                tag = "shadow_match"
+            elif dist <= yellow_dist:
+                color = "yellow"
+                tag = "shadow_medium"
+            elif dist <= red_dist:
+                color = "red"
+                tag = "shadow_miss"
+            else:
+                continue
 
-        if match_idx < len(self._ref_word_positions):
-            start, end = self._ref_word_positions[match_idx]
-            # Remove audio cursor / future / past tags from this word
-            self.ref_display.tag_remove("past", f"1.0+{start}c", f"1.0+{end}c")
-            self.ref_display.tag_remove("audio_cur", f"1.0+{start}c", f"1.0+{end}c")
-            self.ref_display.tag_remove("future", f"1.0+{start}c", f"1.0+{end}c")
-            # Apply shadowing color
-            tag = "shadow_match" if is_green else "shadow_miss"
-            self.ref_display.tag_add(tag, f"1.0+{start}c", f"1.0+{end}c")
+            self._shadowed_words[match_idx] = color
+            if match_idx > self._shadowing_idx:
+                self._shadowing_idx = match_idx
 
-        # Update score display
-        self._update_score()
+            if match_idx < len(self._ref_word_positions):
+                start, end = self._ref_word_positions[match_idx]
+                for t in ("past", "audio_cur", "future", "sample_cur"):
+                    self.ref_display.tag_remove(t, f"1.0+{start}c", f"1.0+{end}c")
+                self.ref_display.tag_add(tag, f"1.0+{start}c", f"1.0+{end}c")
+
+            changed = True
+
+        if changed:
+            self._update_score()
 
     def _update_score(self):
         green = sum(1 for v in self._shadowed_words.values() if v == "green")
+        yellow = sum(1 for v in self._shadowed_words.values() if v == "yellow")
         red = sum(1 for v in self._shadowed_words.values() if v == "red")
-        total = green + red
+        total = green + yellow + red
         pct = (green / total * 100) if total > 0 else 0
         self.score_label.configure(
-            text=f"G:{green}  R:{red}  {pct:.0f}%"
+            text=f"G:{green}  Y:{yellow}  R:{red}  {pct:.0f}%"
         )
 
     def update_speed_info(self, speed_result: dict):
@@ -326,5 +380,6 @@ class DisplayPanel(ctk.CTkFrame):
 
     def get_shadowing_score(self) -> dict:
         green = sum(1 for v in self._shadowed_words.values() if v == "green")
+        yellow = sum(1 for v in self._shadowed_words.values() if v == "yellow")
         red = sum(1 for v in self._shadowed_words.values() if v == "red")
-        return {"green": green, "red": red, "total": green + red}
+        return {"green": green, "yellow": yellow, "red": red, "total": green + yellow + red}

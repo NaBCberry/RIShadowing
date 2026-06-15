@@ -290,35 +290,90 @@ class SettingsDialog(ctk.CTkToplevel):
             bg=C["bg_card"], fg=C["fg_primary"],
         ).pack(side=tk.LEFT, padx=(4, 0))
 
-        row = tk.Frame(section, bg=C["bg_card"])
-        row.pack(fill=tk.X, padx=10, pady=(4, 8))
+        from src.utils.config import get_config
+        cfg = get_config()
+        training = cfg.get("training", {})
 
+        # ── Green distance (≤ this → green) ──
+        row_g = tk.Frame(section, bg=C["bg_card"])
+        row_g.pack(fill=tk.X, padx=10, pady=(6, 2))
         tk.Label(
-            row, text="跟读滞后时间 (0.5-10s):",
+            row_g, text="绿色匹配  距离 ≤ (词):",
+            font=(FONT_FAMILY, 10),
+            bg=C["bg_card"], fg=C["green"],
+        ).pack(side=tk.LEFT)
+        self._green_dist_var = tk.StringVar(
+            value=str(training.get("match_green_distance", 1))
+        )
+        ctk.CTkEntry(
+            row_g, textvariable=self._green_dist_var,
+            font=(FONT_FAMILY, 10),
+            fg_color=C["bg_input"], text_color=C["fg_primary"],
+            border_width=1, border_color=C["fg_dim"],
+            corner_radius=2, width=60,
+        ).pack(side=tk.LEFT, padx=(8, 0))
+
+        # ── Yellow distance (green < distance ≤ this → yellow) ──
+        row_y = tk.Frame(section, bg=C["bg_card"])
+        row_y.pack(fill=tk.X, padx=10, pady=2)
+        tk.Label(
+            row_y, text="黄色匹配  距离 ≤ (词):",
+            font=(FONT_FAMILY, 10),
+            bg=C["bg_card"], fg=C["yellow"],
+        ).pack(side=tk.LEFT)
+        self._yellow_dist_var = tk.StringVar(
+            value=str(training.get("match_yellow_distance", 3))
+        )
+        ctk.CTkEntry(
+            row_y, textvariable=self._yellow_dist_var,
+            font=(FONT_FAMILY, 10),
+            fg_color=C["bg_input"], text_color=C["fg_primary"],
+            border_width=1, border_color=C["fg_dim"],
+            corner_radius=2, width=60,
+        ).pack(side=tk.LEFT, padx=(8, 0))
+
+        # ── Red distance (yellow < distance ≤ this → red) ──
+        row_r = tk.Frame(section, bg=C["bg_card"])
+        row_r.pack(fill=tk.X, padx=10, pady=2)
+        tk.Label(
+            row_r, text="红色匹配  距离 ≤ (词):",
+            font=(FONT_FAMILY, 10),
+            bg=C["bg_card"], fg=C["red"],
+        ).pack(side=tk.LEFT)
+        self._red_dist_var = tk.StringVar(
+            value=str(training.get("match_red_distance", 5))
+        )
+        ctk.CTkEntry(
+            row_r, textvariable=self._red_dist_var,
+            font=(FONT_FAMILY, 10),
+            fg_color=C["bg_input"], text_color=C["fg_primary"],
+            border_width=1, border_color=C["fg_dim"],
+            corner_radius=2, width=60,
+        ).pack(side=tk.LEFT, padx=(8, 0))
+
+        # ── Shadowing lag (sample cursor delay) ──
+        row_lag = tk.Frame(section, bg=C["bg_card"])
+        row_lag.pack(fill=tk.X, padx=10, pady=(4, 2))
+        tk.Label(
+            row_lag, text="跟读滞后时间 (0.5-10s):",
             font=(FONT_FAMILY, 10),
             bg=C["bg_card"], fg=C["fg_secondary"],
         ).pack(side=tk.LEFT)
-
-        from src.utils.config import get_config
-        cfg = get_config()
-        current = cfg.get("training", {}).get("shadowing_lag",
-                    cfg.get("training", {}).get("shadowing_timeout", 3.0))
-
-        self._shadowing_var = tk.StringVar(value=str(current))
+        current_lag = training.get("shadowing_lag",
+                       training.get("shadowing_timeout", 3.0))
+        self._shadowing_var = tk.StringVar(value=str(current_lag))
         ctk.CTkEntry(
-            row,
-            textvariable=self._shadowing_var,
+            row_lag, textvariable=self._shadowing_var,
             font=(FONT_FAMILY, 10),
-            fg_color=C["bg_input"],
-            text_color=C["fg_primary"],
-            border_width=1,
-            border_color=C["fg_dim"],
-            corner_radius=2,
-            width=80,
+            fg_color=C["bg_input"], text_color=C["fg_primary"],
+            border_width=1, border_color=C["fg_dim"],
+            corner_radius=2, width=60,
         ).pack(side=tk.LEFT, padx=(8, 0))
 
+        btn_row = tk.Frame(section, bg=C["bg_card"])
+        btn_row.pack(fill=tk.X, padx=10, pady=(8, 8))
         ctk.CTkButton(
-            row, text="SAVE",
+            btn_row, text="SAVE",
             font=(FONT_FAMILY, 9, "bold"),
             fg_color=C["cyan_dim"],
             hover_color=C["cyan"],
@@ -332,24 +387,34 @@ class SettingsDialog(ctk.CTkToplevel):
 
     def _save_shadowing(self):
         try:
-            val = float(self._shadowing_var.get())
-            val = max(0.5, min(val, 10.0))
+            g = int(self._green_dist_var.get())
+            y = int(self._yellow_dist_var.get())
+            r = int(self._red_dist_var.get())
+            lag = float(self._shadowing_var.get())
+            lag = max(0.5, min(lag, 10.0))
             from src.utils.config import get_config
             import json
             from src.utils.paths import get_config_path
             cfg = get_config()
-            cfg.setdefault("training", {})["shadowing_lag"] = val
+            t = cfg.setdefault("training", {})
+            t["match_green_distance"] = g
+            t["match_yellow_distance"] = y
+            t["match_red_distance"] = r
+            t["shadowing_lag"] = lag
 
             try:
                 with open(get_config_path(), "w", encoding="utf-8") as f:
                     json.dump(cfg, f, ensure_ascii=False, indent=2)
-                messagebox.showinfo("SAVED", f"跟读滞后时间已设为 {val:.1f} 秒，下次开始跟读时生效")
+                messagebox.showinfo("SAVED",
+                    f"匹配距离: 绿色≤{g}  黄色≤{y}  红色≤{r}\n"
+                    f"跟读滞后: {lag:.1f} 秒\n"
+                    f"下次开始跟读时生效")
             except PermissionError:
                 messagebox.showwarning("PERMISSION",
                     "无法写入配置文件（安装目录只读）。\n"
                     "设置将在本次会话中生效，但重启后会恢复默认值。")
         except ValueError:
-            messagebox.showwarning("INVALID", "请输入有效数字")
+            messagebox.showwarning("INVALID", "请输入有效整数（距离）或数字（滞后时间）")
 
     def _build_debug_section(self, body):
         section = ctk.CTkFrame(body, fg_color=C["bg_card"])

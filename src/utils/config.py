@@ -31,6 +31,9 @@ _DEFAULTS = {
         "countdown_seconds": 3.0,
         "shadowing_timeout": 3.0,
         "shadowing_lag": 3.0,
+        "match_green_distance": 1,
+        "match_yellow_distance": 3,
+        "match_red_distance": 5,
     },
     "data_dir": "app",
 }

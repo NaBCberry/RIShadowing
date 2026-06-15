@@ -706,11 +706,12 @@ class ShadowingApp:
 
             shadowing = self.display_panel.get_shadowing_score()
             s_green = shadowing.get("green", 0)
+            s_yellow = shadowing.get("yellow", 0)
             s_red = shadowing.get("red", 0)
             s_total = shadowing.get("total", 0)
             s_score = s_green / max(s_total, 1)
 
-            print(f"[App] practice finished. shadowing: G={s_green} R={s_red} ({s_score:.0%})")
+            print(f"[App] practice finished. shadowing: G={s_green} Y={s_yellow} R={s_red} ({s_score:.0%})")
             for w in recognized_words[:5]:
                 print(f"  [{w['word']}] conf={w['conf']:.2f}")
 
@@ -721,7 +722,7 @@ class ShadowingApp:
 
             self._final_status = (
                 f"SHADOWING SCORE: {s_score:.0%}  "
-                f"G:{s_green}  R:{s_red}"
+                f"G:{s_green}  Y:{s_yellow}  R:{s_red}"
             )
             self.set_training_status(self._final_status)
             self._awaiting_return = True
@@ -738,7 +739,7 @@ class ShadowingApp:
                 try:
                     record_practice(
                         mid, s_score,
-                        s_green, 0, s_red,
+                        s_green, s_yellow, s_red,
                         self.audio_player.duration,
                     )
                     self.material_panel._refresh()
