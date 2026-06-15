@@ -1,0 +1,49 @@
+{
+  "symbols": {
+    "materials.db-shm": {
+      "ipo_ts": 1781524437222,
+      "edit_count": 1,
+      "last_lines": 1,
+      "last_ts": 1781524437222,
+      "delisted": false,
+      "last_source": "onEdit",
+      "last_content_hash": "83f98b10"
+    },
+    "debug.log": {
+      "ipo_ts": 1781524438990,
+      "edit_count": 1,
+      "last_lines": 9,
+      "last_ts": 1781524438990,
+      "delisted": false,
+      "last_source": "onEdit",
+      "last_content_hash": "bdfdb403"
+    },
+    "src/gui/panels/display_panel.py": {
+      "ipo_ts": 1781524706568,
+      "edit_count": 5,
+      "last_lines": 267,
+      "last_ts": 1781524777872,
+      "delisted": false,
+      "last_source": "onEdit",
+      "last_content_hash": "a9f705f5"
+    },
+    "src/__pycache__/app.cpython-313.pyc": {
+      "ipo_ts": 1781524762666,
+      "edit_count": 1,
+      "last_lines": 208,
+      "last_ts": 1781524762666,
+      "delisted": false,
+      "last_source": "onEdit",
+      "last_content_hash": "e0e3d19b"
+    },
+    "src/gui/panels/__pycache__/display_panel.cpython-313.pyc": {
+      "ipo_ts": 1781524784266,
+      "edit_count": 1,
+      "last_lines": 80,
+      "last_ts": 1781524784266,
+      "delisted": false,
+      "last_source": "onEdit",
+      "last_content_hash": "8f6c35d9"
+    }
+  }
+}

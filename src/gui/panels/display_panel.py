@@ -9,6 +9,8 @@ class DisplayPanel(ctk.CTkFrame):
         self.app = app
         self._ref_word_positions = []
         self._current_ref_idx = -1
+        self._last_user_word_count = 0
+        self._last_partial = ""
         self._build()
 
     def _build(self):
@@ -95,6 +97,13 @@ class DisplayPanel(ctk.CTkFrame):
             bg=C["bg_panel"], fg=C["fg_primary"],
         ).pack(side=tk.LEFT, padx=(2, 0))
 
+        self.speed_indicator = tk.Label(
+            right_header, text="",
+            font=(FONT_FAMILY, 9, "bold"),
+            bg=C["bg_panel"], fg=C["fg_dim"],
+        )
+        self.speed_indicator.pack(side=tk.RIGHT, padx=(0, 2))
+
         self.user_display = ctk.CTkTextbox(
             right_frame, font=("Consolas", 14),
             fg_color=C["bg_input"], text_color=C["cyan"],
@@ -128,6 +137,8 @@ class DisplayPanel(ctk.CTkFrame):
         self.ref_display.delete("1.0", tk.END)
         self._ref_word_positions = []
         self._current_ref_idx = -1
+        self._last_user_word_count = 0
+        self._last_partial = ""
 
         for word in reference_words:
             start = len(self.ref_display.get("1.0", tk.END)) - 1
@@ -184,26 +195,47 @@ class DisplayPanel(ctk.CTkFrame):
             self.ref_display.see(f"1.0+{start}c")
 
     def update_user_display(self, recognized_words, accuracy_result):
-        self.user_display.delete("1.0", tk.END)
-
         breakdown = accuracy_result.get("breakdown", [])
-        for i, item in enumerate(breakdown):
+
+        # Insert only NEW words since last update
+        new_count = len(breakdown)
+        for i in range(self._last_user_word_count, new_count):
+            item = breakdown[i]
             word = item.get("user_word", "")
             if word:
                 if i < len(recognized_words) and recognized_words[i].get("conf", 1.0) < 0.7:
-                    self.user_display.insert(tk.END, word, "low_conf")
-                    self.user_display.insert(tk.END, "* ")
+                    self.user_display.insert(tk.END, word + "* ", "low_conf")
                 else:
                     color_tag = f"{item.get('color', '')}_word"
                     self.user_display.insert(tk.END, word + " ", color_tag)
 
+        self._last_user_word_count = new_count
+
+        # Update partial text (current unfinished word)
         partial = self.app.speech_recognizer.partial_text
-        if partial:
-            if breakdown:
-                self.user_display.insert(tk.END, "| ")
-            self.user_display.insert(tk.END, partial, "current")
+        if partial != self._last_partial:
+            # Remove old partial text by deleting from the end
+            if self._last_partial:
+                pos = self.user_display.index(tk.END)
+                start = f"{pos} - {len(self._last_partial) + 1}c"
+                self.user_display.delete(start, "end-1c")
+            if partial:
+                self.user_display.insert(tk.END, partial + " ", "current")
+            self._last_partial = partial
 
         self.user_display.see(tk.END)
+
+    def update_speed_info(self, speed_result: dict):
+        msg = speed_result.get("message", "")
+        color = speed_result.get("color", "")
+        if color == "green":
+            self.speed_indicator.configure(text=f"● {msg}", fg=C["green"])
+        elif color == "yellow":
+            self.speed_indicator.configure(text=f"● {msg}", fg=C["yellow"])
+        elif color == "red":
+            self.speed_indicator.configure(text=f"● {msg}", fg=C["red"])
+        else:
+            self.speed_indicator.configure(text="", fg=C["fg_dim"])
 
     def update_detail(self, recognized_words, accuracy_result):
         self.detail_text.delete("1.0", tk.END)

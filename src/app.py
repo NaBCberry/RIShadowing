@@ -781,6 +781,7 @@ class ShadowingApp:
             self.feedback_panel.update_accuracy(accuracy_result)
             self.display_panel.update_word_accuracy_bars(accuracy_result)
             self.display_panel.update_user_display(recognized_words, accuracy_result)
+            self.display_panel.update_speed_info(speed_result)
             self.display_panel.update_detail(recognized_words, accuracy_result)
 
         self.display_panel.update_ref_highlight()
