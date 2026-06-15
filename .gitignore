@@ -30,4 +30,7 @@ dist_output/
 *.egg-info/
 
 .opencode
+.kagent/
+session*.md
+
 installer.iss
