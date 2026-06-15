@@ -1,6 +1,7 @@
 import customtkinter as ctk
 import tkinter as tk
 import re
+import time
 from src.gui.styles import C, FONT_FAMILY, draw_hex_indicator
 
 
@@ -14,6 +15,7 @@ class DisplayPanel(ctk.CTkFrame):
         self._shadowed_words = {}    # {index: "green"|"red"}
         self._sample_idx = -1         # blue pacing cursor index
         self._last_sample_idx = -1
+        self._sample_start_time = None  # when the independent timer started
         self._last_partial = ""
         self._build()
 
@@ -118,6 +120,7 @@ class DisplayPanel(ctk.CTkFrame):
         self._shadowed_words = {}
         self._sample_idx = -1
         self._last_sample_idx = -1
+        self._sample_start_time = None
         self._last_partial = ""
 
         for word in reference_words:
@@ -161,37 +164,56 @@ class DisplayPanel(ctk.CTkFrame):
             start, _ = self._ref_word_positions[current_idx]
             self.ref_display.see(f"1.0+{start}c")
 
-    def update_sample_cursor(self, audio_position: float):
-        """Move the blue pacing cursor (lagging behind audio by timeout seconds)."""
-        if not self.app.comparator:
-            return
+    def update_sample_cursor(self, audio_position: float) -> bool:
+        """Move the blue pacing cursor on its own independent timer.
+
+        The sample cursor starts at time=0 (first word) and advances at
+        real-time speed.  Audio playback is NOT used; this is a separate
+        clock.  Returns True when the cursor reaches the last word.
+        """
+        if not self.app.comparator or not self._ref_word_positions:
+            return False
+
+        # Lazy‑init the independent timer on the first call
+        if self._sample_start_time is None:
+            self._sample_start_time = time.time()
 
         threshold = 3.0
         try:
             from src.utils.config import get_config
-            threshold = get_config().get("training", {}).get("shadowing_timeout", 3.0)
+            cfg = get_config().get("training", {})
+            threshold = cfg.get("shadowing_lag", cfg.get("shadowing_timeout", 3.0))
         except Exception:
             pass
 
-        sample_pos = max(0, audio_position - threshold)
+        elapsed = time.time() - self._sample_start_time
+        sample_pos = max(0, elapsed - threshold)
+
         self._sample_idx = self.app.comparator.get_current_ref_word_index(sample_pos)
 
-        if self._sample_idx == self._last_sample_idx:
-            return
+        # Guard OOB
         if self._sample_idx >= len(self._ref_word_positions):
-            return
+            self._sample_idx = len(self._ref_word_positions) - 1
 
-        # Remove old sample tag
+        # Check if sample cursor has reached the end
+        finished = (self._sample_idx >= len(self._ref_word_positions) - 1 and
+                    elapsed > threshold + 0.5)  # small grace period
+
+        if self._sample_idx == self._last_sample_idx:
+            return finished
+
+        # Remove old tag
         if self._last_sample_idx >= 0 and self._last_sample_idx < len(self._ref_word_positions):
             s_start, s_end = self._ref_word_positions[self._last_sample_idx]
             self.ref_display.tag_remove("sample_cur", f"1.0+{s_start}c", f"1.0+{s_end}c")
 
-        # Add new sample tag (unless that word is already shadowed)
+        # Add new tag (unless word already shadowed)
         if self._sample_idx not in self._shadowed_words:
             s_start, s_end = self._ref_word_positions[self._sample_idx]
             self.ref_display.tag_add("sample_cur", f"1.0+{s_start}c", f"1.0+{s_end}c")
 
         self._last_sample_idx = self._sample_idx
+        return finished
 
     def update_shadowing(self, partial_text: str, audio_position: float):
         """Process new partial text & advance shadowing cursor.

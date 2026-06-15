@@ -294,14 +294,15 @@ class SettingsDialog(ctk.CTkToplevel):
         row.pack(fill=tk.X, padx=10, pady=(4, 8))
 
         tk.Label(
-            row, text="时间容差 (0.5-10s):",
+            row, text="跟读滞后时间 (0.5-10s):",
             font=(FONT_FAMILY, 10),
             bg=C["bg_card"], fg=C["fg_secondary"],
         ).pack(side=tk.LEFT)
 
         from src.utils.config import get_config
         cfg = get_config()
-        current = cfg.get("training", {}).get("shadowing_timeout", 3.0)
+        current = cfg.get("training", {}).get("shadowing_lag",
+                    cfg.get("training", {}).get("shadowing_timeout", 3.0))
 
         self._shadowing_var = tk.StringVar(value=str(current))
         ctk.CTkEntry(
@@ -337,12 +338,12 @@ class SettingsDialog(ctk.CTkToplevel):
             import json
             from src.utils.paths import get_config_path
             cfg = get_config()
-            cfg.setdefault("training", {})["shadowing_timeout"] = val
+            cfg.setdefault("training", {})["shadowing_lag"] = val
 
             try:
                 with open(get_config_path(), "w", encoding="utf-8") as f:
                     json.dump(cfg, f, ensure_ascii=False, indent=2)
-                messagebox.showinfo("SAVED", f"时间容差已设为 {val:.1f} 秒，下次开始跟读时生效")
+                messagebox.showinfo("SAVED", f"跟读滞后时间已设为 {val:.1f} 秒，下次开始跟读时生效")
             except PermissionError:
                 messagebox.showwarning("PERMISSION",
                     "无法写入配置文件（安装目录只读）。\n"

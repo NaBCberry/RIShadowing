@@ -49,8 +49,6 @@ class ShadowingApp:
         self._awaiting_return = False
         self._training_state = None
         self._final_status = ""
-        self._audio_ended = False
-        self._audio_end_time = 0.0
 
         init_db()
 
@@ -659,7 +657,6 @@ class ShadowingApp:
         self._is_running = True
         self._practice_start_time = time.time()
         self._training_state = "running"
-        self._audio_ended = False
 
         self.btn_terminate.configure(
             text="TERMINATE",
@@ -761,39 +758,11 @@ class ShadowingApp:
         if not self._is_running:
             return
 
-        if self._audio_ended:
-            # Extended recording phase: sample cursor catches up to end
-            total_dur = self.audio_player.duration
-            elapsed = total_dur + (time.time() - self._audio_end_time)
-            ref_elapsed = min(elapsed, total_dur)
-
-            # Get timeout from config
-            timeout = 3.0
-            try:
-                from src.utils.config import get_config
-                timeout = get_config().get("training", {}).get("shadowing_timeout", 3.0)
-            except Exception:
-                pass
-
-            if elapsed >= total_dur + timeout:
-                self._on_practice_finished()
-                return
-
-            if self.comparator:
-                partial = self.speech_recognizer.partial_text
-                self.display_panel.update_shadowing(partial, ref_elapsed)
-                self.display_panel.update_sample_cursor(elapsed)
-
-            self.display_panel.update_ref_highlight()
-            self.root.after(100, self._update_loop)
-            return
-
         if not self.audio_player.is_playing:
-            self._audio_ended = True
-            self._audio_end_time = time.time()
-            self.root.after(100, self._update_loop)
+            self._on_practice_finished()
             return
 
+        sample_done = False
         if self.comparator and self._is_running:
             recognized_words = self.speech_recognizer.get_latest_words()
             ref_elapsed = self.audio_player.position
@@ -807,9 +776,14 @@ class ShadowingApp:
             self.feedback_panel.update_accuracy(accuracy_result)
 
             self.display_panel.update_shadowing(partial, ref_elapsed)
-            self.display_panel.update_sample_cursor(ref_elapsed)
+            sample_done = self.display_panel.update_sample_cursor(ref_elapsed)
 
         self.display_panel.update_ref_highlight()
+
+        if sample_done:
+            self._on_practice_finished()
+            return
+
         self.root.after(100, self._update_loop)
 
     def _on_practice_finished(self):

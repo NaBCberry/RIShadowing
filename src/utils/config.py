@@ -30,6 +30,7 @@ _DEFAULTS = {
         "difficulty_filter": "all",
         "countdown_seconds": 3.0,
         "shadowing_timeout": 3.0,
+        "shadowing_lag": 3.0,
     },
     "data_dir": "app",
 }
