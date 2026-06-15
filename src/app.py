@@ -666,10 +666,7 @@ class ShadowingApp:
             state=tk.NORMAL,
         )
 
-        def on_audio_finished():
-            self.root.after(0, self._on_practice_finished)
-
-        self.audio_player.play(on_finished=on_audio_finished)
+        self.audio_player.play()
         print(f"[App] audio_player.play() called, duration={self.audio_player.duration:.1f}s")
         self.root.after(50, self._update_loop)
 
@@ -756,10 +753,6 @@ class ShadowingApp:
 
     def _update_loop(self):
         if not self._is_running:
-            return
-
-        if not self.audio_player.is_playing:
-            self._on_practice_finished()
             return
 
         sample_done = False
