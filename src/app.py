@@ -775,6 +775,7 @@ class ShadowingApp:
             self.feedback_panel.update_accuracy(accuracy_result)
 
             self.display_panel.update_shadowing(partial, ref_elapsed)
+            self.display_panel.update_sample_cursor(ref_elapsed)
 
         self.display_panel.update_ref_highlight()
         self.root.after(100, self._update_loop)
